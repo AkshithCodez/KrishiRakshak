@@ -1,0 +1,192 @@
+{
+    "Apple___Apple_scab": {
+        "crop": "Apple",
+        "disease": "Apple Scab",
+        "recommendation": "Apply fungicides such as captan or myclobutanil at green-tip stage. Remove and destroy fallen leaves. Prune trees to improve air circulation. Plant scab-resistant varieties for long-term management."
+    },
+    "Apple___Black_rot": {
+        "crop": "Apple",
+        "disease": "Black Rot",
+        "recommendation": "Prune out dead or infected branches and remove mummified fruits. Apply fungicides (captan, thiophanate-methyl) during bloom. Maintain good sanitation around the orchard. Avoid wounding fruit during harvest."
+    },
+    "Apple___Cedar_apple_rust": {
+        "crop": "Apple",
+        "disease": "Cedar Apple Rust",
+        "recommendation": "Apply fungicide (myclobutanil or triadimefon) at pink bud stage and repeat through petal fall. Remove nearby cedar/juniper trees if possible. Plant rust-resistant apple varieties."
+    },
+    "Apple___healthy": {
+        "crop": "Apple",
+        "disease": "Healthy",
+        "recommendation": "No disease detected. Continue regular monitoring, proper watering, and seasonal pruning. Apply preventive fungicide sprays during wet seasons."
+    },
+    "Blueberry___healthy": {
+        "crop": "Blueberry",
+        "disease": "Healthy",
+        "recommendation": "No disease detected. Maintain acidic soil pH (4.5-5.5), ensure adequate mulching, and monitor for pest activity. Prune annually to promote airflow."
+    },
+    "Cherry_(including_sour)___Powdery_mildew": {
+        "crop": "Cherry",
+        "disease": "Powdery Mildew",
+        "recommendation": "Apply sulfur-based or potassium bicarbonate fungicides at first sign of infection. Improve air circulation through pruning. Avoid overhead irrigation. Apply neem oil as an organic alternative."
+    },
+    "Cherry_(including_sour)___healthy": {
+        "crop": "Cherry",
+        "disease": "Healthy",
+        "recommendation": "No disease detected. Continue proper irrigation and fertilization. Prune to maintain open canopy structure. Monitor for early signs of fungal infection during humid weather."
+    },
+    "Corn_(maize)___Cercospora_leaf_spot Gray_leaf_spot": {
+        "crop": "Corn",
+        "disease": "Cercospora (Gray Leaf Spot)",
+        "recommendation": "Plant resistant hybrids. Rotate crops — avoid planting corn after corn. Apply foliar fungicides (strobilurin or triazole) at VT-R1 stage if disease pressure is high. Till crop residue to reduce inoculum."
+    },
+    "Corn_(maize)___Common_rust_": {
+        "crop": "Corn",
+        "disease": "Common Rust",
+        "recommendation": "Plant rust-resistant hybrids. Apply fungicides (azoxystrobin, propiconazole) if infection appears before tasseling. Monitor fields during warm, humid weather. Early planting can reduce severity."
+    },
+    "Corn_(maize)___Northern_Leaf_Blight": {
+        "crop": "Corn",
+        "disease": "Northern Leaf Blight",
+        "recommendation": "Use resistant hybrids. Apply foliar fungicides (pyraclostrobin, triazole) at early infection. Practice crop rotation and tillage of corn residue. Scout fields from V8 through grain fill."
+    },
+    "Corn_(maize)___healthy": {
+        "crop": "Corn",
+        "disease": "Healthy",
+        "recommendation": "No disease detected. Maintain proper nitrogen fertilization and irrigation. Scout regularly for pest and disease pressure. Rotate with soybeans or other non-host crops."
+    },
+    "Grape___Black_rot": {
+        "crop": "Grape",
+        "disease": "Black Rot",
+        "recommendation": "Apply fungicides (myclobutanil, mancozeb, captan) from bud break through veraison. Remove mummified berries and infected canes. Ensure good canopy management for air circulation."
+    },
+    "Grape___Esca_(Black_Measles)": {
+        "crop": "Grape",
+        "disease": "Esca (Black Measles)",
+        "recommendation": "No proven curative treatment — manage by removing infected wood. Apply wound protectants after pruning. Avoid large pruning wounds. Sodium arsenite (where legal) has shown preventive effects. Replace severely infected vines."
+    },
+    "Grape___Leaf_blight_(Isariopsis_Leaf_Spot)": {
+        "crop": "Grape",
+        "disease": "Leaf Blight (Isariopsis Leaf Spot)",
+        "recommendation": "Apply copper-based fungicides or mancozeb at first sign of spots. Improve vineyard ventilation through canopy management. Remove and destroy infected leaves. Avoid excessive nitrogen fertilization."
+    },
+    "Grape___healthy": {
+        "crop": "Grape",
+        "disease": "Healthy",
+        "recommendation": "No disease detected. Continue regular canopy management, balanced fertilization, and preventive fungicide schedule. Monitor for early disease signs during flowering and veraison."
+    },
+    "Orange___Haunglongbing_(Citrus_greening)": {
+        "crop": "Orange",
+        "disease": "Huanglongbing (Citrus Greening)",
+        "recommendation": "No cure exists. Control the Asian citrus psyllid vector with systemic insecticides (imidacloprid, thiamethoxam). Remove and destroy infected trees to prevent spread. Use certified disease-free nursery stock for replanting. Apply foliar nutrition to sustain tree health."
+    },
+    "Peach___Bacterial_spot": {
+        "crop": "Peach",
+        "disease": "Bacterial Spot",
+        "recommendation": "Apply copper-based bactericides during dormancy and early bloom. Plant resistant varieties. Avoid overhead irrigation. Maintain tree vigor through proper fertilization. Severely infected branches should be pruned out."
+    },
+    "Peach___healthy": {
+        "crop": "Peach",
+        "disease": "Healthy",
+        "recommendation": "No disease detected. Continue proper pruning for open center shape. Apply dormant sprays (copper + oil) in late winter. Monitor for early signs of leaf curl and bacterial spot."
+    },
+    "Pepper,_bell___Bacterial_spot": {
+        "crop": "Bell Pepper",
+        "disease": "Bacterial Spot",
+        "recommendation": "Use copper-based sprays (copper hydroxide) mixed with mancozeb. Plant resistant varieties and use pathogen-free seed. Practice crop rotation (2-3 year cycle). Avoid working in wet fields. Remove severely infected plants."
+    },
+    "Pepper,_bell___healthy": {
+        "crop": "Bell Pepper",
+        "disease": "Healthy",
+        "recommendation": "No disease detected. Maintain consistent irrigation and balanced fertilization. Stake plants for good airflow. Scout for aphids and other pests regularly."
+    },
+    "Potato___Early_blight": {
+        "crop": "Potato",
+        "disease": "Early Blight",
+        "recommendation": "Apply fungicides (chlorothalonil, mancozeb, or azoxystrobin) at first sign of lesions. Practice crop rotation with non-solanaceous crops. Ensure adequate plant nutrition (especially nitrogen and potassium). Remove infected plant debris after harvest."
+    },
+    "Potato___Late_blight": {
+        "crop": "Potato",
+        "disease": "Late Blight",
+        "recommendation": "Apply systemic fungicides (metalaxyl + mancozeb, or cymoxanil) preventively during cool, wet weather. Destroy volunteer potatoes and cull piles. Use certified disease-free seed tubers. Harvest promptly when vines die. This disease spreads rapidly — act immediately."
+    },
+    "Potato___healthy": {
+        "crop": "Potato",
+        "disease": "Healthy",
+        "recommendation": "No disease detected. Continue proper hilling, irrigation management, and scouting. Use certified seed potatoes. Rotate crops every 2-3 years to prevent soil-borne pathogen buildup."
+    },
+    "Raspberry___healthy": {
+        "crop": "Raspberry",
+        "disease": "Healthy",
+        "recommendation": "No disease detected. Maintain proper spacing for air circulation. Remove old canes after fruiting. Apply dormant sprays in late winter. Monitor for signs of anthracnose and cane blight."
+    },
+    "Soybean___healthy": {
+        "crop": "Soybean",
+        "disease": "Healthy",
+        "recommendation": "No disease detected. Continue crop rotation with corn or other non-legumes. Monitor for soybean rust and sudden death syndrome. Ensure proper seed treatment before planting."
+    },
+    "Squash___Powdery_mildew": {
+        "crop": "Squash",
+        "disease": "Powdery Mildew",
+        "recommendation": "Apply potassium bicarbonate, sulfur, or neem oil at first sign of white powdery spots. Improve air circulation by proper plant spacing. Avoid overhead watering. Plant resistant varieties. Remove severely infected leaves."
+    },
+    "Strawberry___Leaf_scorch": {
+        "crop": "Strawberry",
+        "disease": "Leaf Scorch",
+        "recommendation": "Apply fungicides (captan or thiram) at renovation and during fall. Remove and destroy infected leaves. Ensure proper plant spacing for air circulation. Use drip irrigation instead of overhead sprinklers. Plant resistant cultivars."
+    },
+    "Strawberry___healthy": {
+        "crop": "Strawberry",
+        "disease": "Healthy",
+        "recommendation": "No disease detected. Maintain proper mulching, drip irrigation, and weed control. Renovate beds annually. Monitor for fungal diseases during wet periods."
+    },
+    "Tomato___Bacterial_spot": {
+        "crop": "Tomato",
+        "disease": "Bacterial Spot",
+        "recommendation": "Apply copper-based bactericides early and regularly. Use pathogen-free seed and transplants. Practice crop rotation (2-3 years). Avoid overhead irrigation and working in wet foliage. Remove severely infected plants."
+    },
+    "Tomato___Early_blight": {
+        "crop": "Tomato",
+        "disease": "Early Blight",
+        "recommendation": "Apply fungicides (chlorothalonil, mancozeb, or copper) at first sign of concentric-ring lesions. Mulch around plants to prevent soil splash. Stake or cage plants for better airflow. Practice crop rotation with non-solanaceous crops."
+    },
+    "Tomato___Late_blight": {
+        "crop": "Tomato",
+        "disease": "Late Blight",
+        "recommendation": "Apply systemic fungicides (metalaxyl + mancozeb) immediately — this disease spreads extremely fast in wet conditions. Remove and destroy infected plants. Do not compost infected material. Use resistant varieties. Monitor weather forecasts for blight-favorable conditions."
+    },
+    "Tomato___Leaf_Mold": {
+        "crop": "Tomato",
+        "disease": "Leaf Mold",
+        "recommendation": "Improve greenhouse ventilation and reduce humidity below 85%. Apply fungicides (chlorothalonil or copper) at first sign of yellow spots with olive-green mold on undersides. Remove lower infected leaves. Use resistant varieties in greenhouse production."
+    },
+    "Tomato___Septoria_leaf_spot": {
+        "crop": "Tomato",
+        "disease": "Septoria Leaf Spot",
+        "recommendation": "Apply fungicides (chlorothalonil, mancozeb, or copper) at first appearance of small dark spots with gray centers. Remove infected lower leaves. Mulch to prevent soil splash. Practice crop rotation. Avoid overhead irrigation."
+    },
+    "Tomato___Spider_mites Two-spotted_spider_mite": {
+        "crop": "Tomato",
+        "disease": "Spider Mites (Two-spotted)",
+        "recommendation": "Spray plants with strong water jet to dislodge mites. Apply miticides (abamectin) or insecticidal soap for heavy infestations. Introduce predatory mites (Phytoseiulus persimilis) as biological control. Avoid broad-spectrum insecticides that kill natural predators."
+    },
+    "Tomato___Target_Spot": {
+        "crop": "Tomato",
+        "disease": "Target Spot",
+        "recommendation": "Apply fungicides (chlorothalonil, azoxystrobin) at first sign of brown target-like lesions. Remove infected lower leaves. Improve air circulation through proper spacing and staking. Practice crop rotation with non-solanaceous crops."
+    },
+    "Tomato___Tomato_Yellow_Leaf_Curl_Virus": {
+        "crop": "Tomato",
+        "disease": "Yellow Leaf Curl Virus",
+        "recommendation": "No cure for infected plants — remove and destroy them immediately. Control whitefly vector (Bemisia tabaci) with systemic insecticides (imidacloprid) or reflective mulches. Use virus-resistant tomato varieties. Install insect-proof netting in nurseries."
+    },
+    "Tomato___Tomato_mosaic_virus": {
+        "crop": "Tomato",
+        "disease": "Mosaic Virus",
+        "recommendation": "No cure — remove and destroy infected plants. Disinfect tools and hands with milk solution (20%) between plants. Use resistant varieties. Avoid tobacco use near tomato plants (tobacco mosaic virus). Practice strict hygiene in the field."
+    },
+    "Tomato___healthy": {
+        "crop": "Tomato",
+        "disease": "Healthy",
+        "recommendation": "No disease detected. Continue balanced fertilization, consistent watering, and proper staking. Scout regularly for early signs of blight, spots, and insect pests. Rotate crops annually."
+    }
+}

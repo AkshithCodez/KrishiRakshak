@@ -1,0 +1,66 @@
+version: '3.8'
+
+services:
+  # ── PostgreSQL Database ──
+  postgres:
+    image: postgres:15-alpine
+    container_name: krishi_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: krishirakshak
+      POSTGRES_PASSWORD: krishirakshak_secret
+      POSTGRES_DB: krishirakshak
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U krishirakshak -d krishirakshak"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ── ML Inference Service ──
+  ml-service:
+    build:
+      context: ./ml
+      dockerfile: serving/Dockerfile
+    container_name: krishi_ml_service
+    restart: unless-stopped
+    ports:
+      - "8001:8001"
+    environment:
+      - MODEL_PATH=../models/best_model.pt
+      - TREATMENTS_PATH=treatments.json
+    volumes:
+      - ./ml/models:/app/models
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8001/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # ── Backend API ──
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: krishi_backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://krishirakshak:krishirakshak_secret@postgres:5432/krishirakshak
+      - ML_SERVICE_URL=http://ml-service:8001
+      - DEBUG=True
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  postgres_data:
