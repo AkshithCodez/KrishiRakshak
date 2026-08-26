@@ -58,34 +58,58 @@ def load_model():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"[ML Server] Device: {device}")
 
-    # Load model checkpoint
-    print(f"[ML Server] Loading model from: {MODEL_PATH}")
-    checkpoint = torch.load(MODEL_PATH, map_location=device, weights_only=False)
-    class_names = checkpoint["class_names"]
-    backbone = checkpoint.get("backbone", "mobilenetv2")
-    num_classes = len(class_names)
+    # Load treatments first
+    resolved_treatments_path = TREATMENTS_PATH
+    if not os.path.exists(resolved_treatments_path):
+        resolved_treatments_path = os.path.join(os.path.dirname(__file__), "treatments.json")
 
-    model = PlantDiseaseClassifier(
-        num_classes=num_classes,
-        backbone=backbone,
-        freeze_backbone=False,
-    )
-    model.load_state_dict(checkpoint["model_state_dict"])
-    model = model.to(device)
-    model.eval()
-    print(f"[ML Server] Model loaded: {backbone}, {num_classes} classes")
-
-    # Load treatments
-    if os.path.exists(TREATMENTS_PATH):
-        with open(TREATMENTS_PATH) as f:
+    if os.path.exists(resolved_treatments_path):
+        with open(resolved_treatments_path) as f:
             treatments = json.load(f)
         print(f"[ML Server] Treatments loaded: {len(treatments)} entries")
     else:
-        print(f"[ML Server] Warning: treatments.json not found at {TREATMENTS_PATH}")
+        print(f"[ML Server] Warning: treatments.json not found at {resolved_treatments_path}")
         treatments = {}
 
     # Transform
     transform = get_eval_transform()
+
+    # Load model checkpoint if available
+    resolved_model_path = MODEL_PATH
+    if not os.path.exists(resolved_model_path):
+        # Try relative to ml/models
+        alt_path = os.path.join(os.path.dirname(__file__), "..", "models", "best_model.pt")
+        if os.path.exists(alt_path):
+            resolved_model_path = alt_path
+
+    if os.path.exists(resolved_model_path):
+        print(f"[ML Server] Loading model from: {resolved_model_path}")
+        checkpoint = torch.load(resolved_model_path, map_location=device, weights_only=False)
+        class_names = checkpoint["class_names"]
+        backbone = checkpoint.get("backbone", "mobilenetv2")
+        num_classes = len(class_names)
+
+        model = PlantDiseaseClassifier(
+            num_classes=num_classes,
+            backbone=backbone,
+            freeze_backbone=False,
+        )
+        model.load_state_dict(checkpoint["model_state_dict"])
+        model = model.to(device)
+        model.eval()
+        print(f"[ML Server] Trained model loaded: {backbone}, {num_classes} classes")
+    else:
+        print(f"[ML Server] ⚠️ Model checkpoint not found at '{MODEL_PATH}'. Initializing in Demo Mode with untrained backbone.")
+        class_names = list(treatments.keys()) if treatments else ["Healthy", "Blight"]
+        num_classes = len(class_names)
+        model = PlantDiseaseClassifier(
+            num_classes=num_classes,
+            backbone="mobilenetv2",
+            freeze_backbone=False,
+        )
+        model = model.to(device)
+        model.eval()
+        print(f"[ML Server] Demo model initialized with {num_classes} classes.")
 
     # Warmup inference
     dummy = torch.randn(1, 3, 224, 224).to(device)

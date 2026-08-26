@@ -9,9 +9,8 @@ from datetime import datetime
 
 from sqlalchemy import (
     Column, String, Float, Text, Boolean, Integer,
-    DateTime, Index, CheckConstraint,
+    DateTime, Index, CheckConstraint, Uuid,
 )
-from sqlalchemy.dialects.postgresql import UUID
 
 from .db import Base
 
@@ -25,7 +24,7 @@ class ScanReport(Base):
     """
     __tablename__ = "scan_reports"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     device_id = Column(String(64), nullable=False, index=True)
     crop = Column(String(32), nullable=False)
     disease = Column(String(64), nullable=False)
@@ -59,7 +58,7 @@ class OutbreakAlert(Base):
     """
     __tablename__ = "outbreak_alerts"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     disease = Column(String(64), nullable=False)
     crop = Column(String(32), nullable=False)
     geohash = Column(String(12), nullable=False, index=True)

@@ -14,9 +14,14 @@ Usage:
     python seed_data.py
 """
 
+import os
+import sys
 import random
 import uuid
 from datetime import datetime, timedelta, timezone
+
+# Ensure backend directory is in python path
+sys.path.insert(0, os.path.join(os.path.dirname(__file__)))
 
 from app.db import SessionLocal, Base, engine
 from app.models import ScanReport
