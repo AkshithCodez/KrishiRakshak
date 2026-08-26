@@ -37,7 +37,7 @@ def parse_args():
     # Data
     parser.add_argument("--data-dir", type=str, required=True, help="Path to PlantVillage dataset root")
     parser.add_argument("--batch-size", type=int, default=32)
-    parser.add_argument("--num-workers", type=int, default=4)
+    parser.add_argument("--num-workers", type=int, default=2)
 
     # Model
     parser.add_argument("--backbone", type=str, default="mobilenetv2",
@@ -188,7 +188,7 @@ def main():
         param_groups = [{"params": model.parameters(), "lr": args.head_lr}]
 
     optimizer = Adam(param_groups, weight_decay=args.weight_decay)
-    scheduler = ReduceLROnPlateau(optimizer, mode="min", patience=3, factor=0.5, verbose=True)
+    scheduler = ReduceLROnPlateau(optimizer, mode="min", patience=3, factor=0.5)
 
     # ── Training Loop ──
     best_val_acc = 0.0
