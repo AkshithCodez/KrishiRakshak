@@ -8,9 +8,8 @@ import '../models/scan_result.dart';
 import '../models/outbreak_alert.dart';
 
 class ApiService {
-  // Use 10.0.2.2 for Android Emulator connecting to host machine, or your local LAN IP for physical device
-  static const String defaultMlUrl = 'http://10.0.2.2:8001';
-  static const String defaultBackendUrl = 'http://10.0.2.2:8000';
+  static const String defaultMlUrl = 'http://192.168.0.134:8001';
+  static const String defaultBackendUrl = 'http://192.168.0.134:8000';
 
   static String mlBaseUrl = defaultMlUrl;
   static String backendBaseUrl = defaultBackendUrl;
