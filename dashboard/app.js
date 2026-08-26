@@ -3,7 +3,7 @@
  * Integrates Leaflet.js map, Chart.js statistics, and live outbreak feeds.
  */
 
-const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+const API_BASE = (window.location.protocol === 'file:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || !window.location.hostname)
   ? 'http://localhost:8000' 
   : '';
 
@@ -196,6 +196,11 @@ async function fetchRecentScans() {
 
       markersLayer.addLayer(circle);
     });
+
+    if (data.scans.length > 0) {
+      const group = new L.featureGroup(markersLayer.getLayers());
+      map.fitBounds(group.getBounds().pad(0.3));
+    }
 
   } catch (err) {
     console.warn('Could not fetch scans:', err);

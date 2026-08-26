@@ -23,12 +23,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from PIL import Image
 
-# These imports assume the serving dir is run with ml/src on the Python path
-import sys
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
-
-from dataset import get_eval_transform
-from model import PlantDiseaseClassifier
+# Import dataset & model from ml.src with fallback for direct execution
+try:
+    from ml.src.dataset import get_eval_transform
+    from ml.src.model import PlantDiseaseClassifier
+except ImportError:
+    import sys
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
+    from dataset import get_eval_transform
+    from model import PlantDiseaseClassifier
 
 
 # ──────────────────────────────────────────────
