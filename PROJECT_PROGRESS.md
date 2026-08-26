@@ -97,8 +97,8 @@
 
 ## 4. Current Operational State
 
-1. **Backend Server:** Fully functional on `http://localhost:8000`.
-2. **ML Inference Server:** Fully functional on `http://localhost:8001` (currently in Demo Mode with 38 classes).
+1. **Backend Server:** Fully functional on `http://localhost:8000` (SQLite/Postgres).
+2. **ML Inference Server:** Fully functional on `http://localhost:8001` with full **38-class PlantVillage trained MobileNetV2 model** (`best_model.pt`).
 3. **Database:** Fully populated with demo data in `krishirakshak.db`.
 4. **Dashboard:** Fully functional when opening `dashboard/index.html` in any browser.
 5. **Git Repository:** Synced and up to date with `main` branch at `https://github.com/AkshithCodez/KrishiRakshak.git`.
