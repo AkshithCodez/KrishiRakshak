@@ -1,82 +1,54 @@
-# KrishiRakshak 🌿
-**Farmers Disease Diagnostic & Regional Outbreak Reporting Portal**
+# KrishiRakshak - Local Run Instructions
 
-An end-to-end AI-powered mobile and web platform that diagnoses crop leaf diseases using deep learning (PlantVillage 38 classes across 14 crops) and detects regional disease outbreaks by analyzing community geolocation scan density.
+This guide explains how to start the project locally on your Windows machine using the Python Virtual Environment.
 
----
-
-## 🚀 Key Features
-
-- **Leaf Disease Diagnosis (38 Classes)**: Transfer learning CNN (`MobileNetV2` / `EfficientNet-B0`) providing instant diagnoses with confidence levels and agronomically verified treatments.
-- **Community Outbreak Surveillance (The Differentiator)**: Geohash-based spatial aggregation automatically detects regional outbreaks when $\ge 3$ distinct farmers report matching diseases within a ~5km radius over a rolling 7-day window.
-- **Flutter Mobile App**: Camera photo capture, gallery upload, scan history, and community outbreak warning cards.
-- **Surveillance Web Dashboard**: Real-time Leaflet.js map with disease geolocation pins, Chart.js disease frequency statistics, and live outbreak alert feeds.
-
----
-
-## 📁 Repository Structure
-
-```
-KrishiRakshak/
-├── ml/                      # PyTorch model training, dataset, & FastAPI serving
-│   ├── src/                 # dataset.py, model.py, train.py, evaluate.py, predict.py
-│   ├── serving/             # app.py, treatments.json, Dockerfile
-│   └── requirements.txt
-│
-├── backend/                 # FastAPI REST API & PostgreSQL persistence
-│   ├── app/                 # routes/, services/ (geo & outbreak), models, db, schemas
-│   ├── seed_data.py         # Synthetic scan reports & outbreak cluster generator
-│   └── Dockerfile
-│
-├── mobile/                  # Flutter cross-platform mobile app
-│   ├── lib/                 # main.dart, screens/, services/, models/
-│   └── pubspec.yaml
-│
-├── dashboard/               # Lightweight Surveillance Web Dashboard
-│   ├── index.html, style.css, app.js
-│
-├── docs/                    # Architecture diagrams & API documentation
-│   ├── architecture.md
-│   └── api-spec.md
-│
-└── docker-compose.yml       # One-command orchestration for ML + Backend + Postgres
+## Prerequisites
+Make sure you have already installed the requirements in your virtual environment:
+```powershell
+.\venv\Scripts\Activate.ps1
+pip install -r ml/requirements.txt
+pip install -r backend/requirements.txt
 ```
 
 ---
 
-## ⚡ Quick Start
+## How to Run the Project (Local Testing)
 
-### 1. Run with Docker Compose (Recommended)
-```bash
-docker-compose up --build
+You will need to open **three separate PowerShell terminals** inside the `KrishiRakshak` root directory.
+
+### 🟢 Terminal 1: Start the ML Service
+This service handles the AI predictions.
+```powershell
+.\venv\Scripts\Activate.ps1
+uvicorn ml.serving.app:app --host 0.0.0.0 --port 8001
 ```
-- **ML Service**: http://localhost:8001/docs
-- **Backend API**: http://localhost:8000/docs
-- **Postgres**: `localhost:5432`
+*(Leave this running. If you haven't trained the model yet, it will safely start in "Demo Mode".)*
 
-### 2. Seed Simulated Demo Data
-In a separate terminal:
-```bash
-docker-compose exec backend python seed_data.py
+### 🟢 Terminal 2: Start the Backend API
+This service handles the database, farmers' reports, and outbreak detection.
+```powershell
+.\venv\Scripts\Activate.ps1
+# Tell the backend to use a local SQLite file instead of Docker/Postgres
+$env:DATABASE_URL="sqlite:///./krishirakshak.db"
+uvicorn backend.app.main:app --host 0.0.0.0 --port 8000
 ```
-This populates sample scan reports and generates active outbreak clusters for immediate demonstration.
+*(Leave this running.)*
 
-### 3. Open the Surveillance Dashboard
-Simply open [dashboard/index.html](file:///c:/Users/reddy/Downloads/GoatFiles/project/Mini%20Project/KrishiRakshak/dashboard/index.html) in any web browser.
-
-### 4. Run the Flutter Mobile App
-```bash
-cd mobile
-flutter pub get
-flutter run
+### 🟢 Terminal 3: Generate Demo Data (Optional)
+Run this script to inject fake farmer reports and trigger the regional outbreak alerts. You only need to run this once per session to populate the dashboard.
+```powershell
+.\venv\Scripts\Activate.ps1
+$env:DATABASE_URL="sqlite:///./krishirakshak.db"
+python backend/seed_data.py
 ```
 
 ---
 
-## 🌿 Supported Crops & Diseases (14 Crops / 38 Classes)
-- **Tomato** (7 diseases + Healthy): Early Blight, Late Blight, Bacterial Spot, Leaf Mold, Septoria, Spider Mites, Target Spot, Yellow Leaf Curl, Mosaic Virus.
-- **Potato** (2 diseases + Healthy): Early Blight, Late Blight.
-- **Corn / Maize** (3 diseases + Healthy): Cercospora (Gray Leaf Spot), Common Rust, Northern Leaf Blight.
-- **Grape** (3 diseases + Healthy): Black Rot, Esca (Black Measles), Leaf Blight.
-- **Apple** (3 diseases + Healthy): Apple Scab, Black Rot, Cedar Apple Rust.
-- **Pepper Bell, Peach, Cherry, Strawberry, Squash, Orange, Blueberry, Raspberry, Soybean**.
+## Viewing the Dashboard
+Once the Backend API (Terminal 2) is running and you have seeded the data (Terminal 3), you can view the live dashboard:
+
+1. Open your File Explorer.
+2. Navigate to the `KrishiRakshak\dashboard\` folder.
+3. Double-click **`index.html`** to open it in your web browser.
+
+You can click the **⟳ Refresh Data** button in the dashboard to see new scans appear in real-time.
