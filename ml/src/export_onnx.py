@@ -51,20 +51,23 @@ def export_to_onnx():
     os.makedirs(os.path.dirname(os.path.abspath(args.output)), exist_ok=True)
     print(f"Exporting model to ONNX format at: {args.output}")
 
-    torch.onnx.export(
-        model,
-        dummy_input,
-        args.output,
-        export_params=True,
-        opset_version=14,
-        do_constant_folding=True,
-        input_names=["input"],
-        output_names=["output"],
-        dynamic_axes={
+    export_kwargs = {
+        "export_params": True,
+        "opset_version": 14,
+        "do_constant_folding": True,
+        "input_names": ["input"],
+        "output_names": ["output"],
+        "dynamic_axes": {
             "input": {0: "batch_size"},
             "output": {0: "batch_size"},
         },
-    )
+    }
+
+    try:
+        # PyTorch 2.1+ legacy flag if onnxscript is not installed
+        torch.onnx.export(model, dummy_input, args.output, dynamo=False, **export_kwargs)
+    except TypeError:
+        torch.onnx.export(model, dummy_input, args.output, **export_kwargs)
 
     print("✓ Successfully exported to ONNX format!")
 

@@ -105,19 +105,20 @@
 
 ---
 
-## 5. Upcoming Roadmap & Next Steps
+## 5. Completed & Upcoming Roadmap
 
-### Step 1: Model Training on Full PlantVillage Dataset
-- Download the full 38-class PlantVillage dataset (~54,000 images across 14 crops).
-- Place images in `ml/data/plantvillage/`.
-- Run `python ml/src/train.py --epochs 15 --batch-size 32 --lr 0.0003`.
-- Model will save checkpoint to `ml/models/best_model.pt` and export `ml/models/model.onnx`.
-- ML serving app will automatically detect and load the trained model weights.
+### Step 1: Model Training & ONNX Export (COMPLETED ✅)
+- Trained MobileNetV2 with PyTorch on Colab T4 GPU.
+- Exported and validated `best_model.pt` and `model.onnx`.
+- Live ML serving server (`ml/serving/app.py`) verified and loaded on `http://localhost:8001`.
 
-### Step 2: Flutter Mobile App Development
+### Step 2: Flutter Mobile App Development (NEXT 🎯)
 - Implement Flutter UI in `mobile/`:
   - Camera leaf capture screen with real-time bounding guides.
   - Diagnosis result screen displaying disease name, confidence meter, and treatment recommendations.
+  - Outbreak radar / proximity alert screen showing nearby disease outbreaks.
+  - Offline-safe scan history cache.
+- Integrate Flutter HTTP client with Backend API endpoints.
   - Outbreak radar / proximity alert screen showing nearby disease outbreaks.
   - Offline-safe scan history cache.
 - Integrate Flutter HTTP client with Backend API endpoints.

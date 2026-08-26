@@ -26,11 +26,11 @@ Unlike standalone diagnostic apps (e.g., Plantix), this project aggregates diagn
 - [x] Backend database models (UUID cross-compatible with Postgres/SQLite)
 - [x] Backend REST API endpoints (`/scans`, `/outbreaks`, `/stats`)
 - [x] Outbreak detection logic (`backend/app/services/outbreak.py`)
-- [x] ML Training script structure & Serving API
+- [x] ML Training on GPU + ONNX export completed (`ml/models/best_model.pt`)
+- [x] ML Serving API (`ml/serving/app.py`) live with trained weights
 - [x] Interactive Web Dashboard (`dashboard/index.html` with Leaflet auto-zoom)
 - [x] `seed_data.py` script to generate fake outbreak clusters for demo purposes.
 
 ## Next Steps
-1. **Machine Learning**: Download the PlantVillage dataset (14 crops, 38 classes) and run `train.py` to generate the `best_model.pt` weights.
-2. **Mobile App**: Build the Flutter application in the `/mobile` directory, connect it to the Backend API and device camera.
-3. **Integration Testing**: End-to-end test from mobile photo capture to dashboard alert generation.
+1. **Mobile App**: Build the Flutter application in the `/mobile` directory, connect it to the Backend API and device camera.
+2. **Integration Testing**: End-to-end test from mobile photo capture to dashboard alert generation.
