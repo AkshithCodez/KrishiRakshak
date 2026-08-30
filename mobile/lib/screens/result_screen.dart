@@ -1,17 +1,17 @@
-import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import '../models/scan_result.dart';
 
 class ResultScreen extends StatelessWidget {
   final ScanResult result;
-  final File imageFile;
+  final Uint8List imageBytes;
   final double latitude;
   final double longitude;
 
   const ResultScreen({
     super.key,
     required this.result,
-    required this.imageFile,
+    required this.imageBytes,
     required this.latitude,
     required this.longitude,
   });
@@ -43,8 +43,8 @@ class ResultScreen extends StatelessWidget {
                   border: Border.all(color: const Color(0xFF263F33)),
                   borderRadius: BorderRadius.circular(16),
                 ),
-                child: Image.file(
-                  imageFile,
+                child: Image.memory(
+                  imageBytes,
                   fit: BoxFit.cover,
                 ),
               ),

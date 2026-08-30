@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../services/api_service.dart';
@@ -33,10 +33,10 @@ class _CameraScreenState extends State<CameraScreen> {
         _statusMessage = 'Analyzing crop leaf image...';
       });
 
-      final imageFile = File(pickedFile.path);
+      final Uint8List imageBytes = await pickedFile.readAsBytes();
 
       // 1. Call ML Model for diagnosis
-      final result = await ApiService.diagnoseLeaf(imageFile);
+      final result = await ApiService.diagnoseLeaf(imageBytes, filename: pickedFile.name);
 
       // 2. Fetch location in parallel
       setState(() {
@@ -65,7 +65,7 @@ class _CameraScreenState extends State<CameraScreen> {
         MaterialPageRoute(
           builder: (context) => ResultScreen(
             result: result,
-            imageFile: imageFile,
+            imageBytes: imageBytes,
             latitude: lat,
             longitude: lng,
           ),

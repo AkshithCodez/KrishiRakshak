@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'dart:io';
+import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -30,18 +30,14 @@ class ApiService {
   }
 
   /// Upload photo to ML Service for instant diagnosis
-  static Future<ScanResult> diagnoseLeaf(File imageFile) async {
+  static Future<ScanResult> diagnoseLeaf(Uint8List imageBytes, {String filename = 'leaf.jpg'}) async {
     final uri = Uri.parse('$mlBaseUrl/predict');
     final request = http.MultipartRequest('POST', uri);
 
-    final fileStream = http.ByteStream(imageFile.openRead());
-    final length = await imageFile.length();
-
-    final multipartFile = http.MultipartFile(
+    final multipartFile = http.MultipartFile.fromBytes(
       'file',
-      fileStream,
-      length,
-      filename: 'leaf.jpg',
+      imageBytes,
+      filename: filename,
       contentType: MediaType('image', 'jpeg'),
     );
     request.files.add(multipartFile);
