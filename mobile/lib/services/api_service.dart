@@ -1,11 +1,21 @@
 import 'dart:convert';
-import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 import '../models/scan_result.dart';
 import '../models/outbreak_alert.dart';
+
+/// Thrown when the ML backend rejects an image as out-of-distribution.
+class OodException implements Exception {
+  final String message;
+  final double confidence;
+  OodException(this.message, this.confidence);
+
+  @override
+  String toString() => message;
+}
 
 class ApiService {
   static const String defaultMlUrl = 'http://192.168.0.134:8001';
@@ -29,7 +39,9 @@ class ApiService {
     return id;
   }
 
-  /// Upload photo to ML Service for instant diagnosis
+  /// Upload photo to ML Service for instant diagnosis.
+  /// Throws [OodException] if the image is rejected as unsupported/unclear.
+  /// Throws [Exception] on any other server-side error.
   static Future<ScanResult> diagnoseLeaf(Uint8List imageBytes, {String filename = 'leaf.jpg'}) async {
     final uri = Uri.parse('$mlBaseUrl/predict');
     final request = http.MultipartRequest('POST', uri);
@@ -47,6 +59,18 @@ class ApiService {
 
     if (response.statusCode == 200) {
       final data = json.decode(response.body);
+
+      // Check OOD rejection (is_supported=false)
+      final isSupported = data['is_supported'] as bool? ?? true;
+      if (!isSupported) {
+        throw OodException(
+          data['message'] as String? ??
+              'Image could not be reliably classified. '
+              'Please use a clear photo of a supported crop.',
+          (data['confidence'] as num?)?.toDouble() ?? 0.0,
+        );
+      }
+
       return ScanResult.fromPredictionJson(data['prediction']);
     } else {
       throw Exception('ML Diagnosis failed: ${response.statusCode} - ${response.body}');
@@ -80,7 +104,7 @@ class ApiService {
 
     if (response.statusCode != 201) {
       // Non-blocking error
-      print('Warning: Failed to log scan to backend: ${response.body}');
+      debugPrint('Warning: Failed to log scan to backend: ${response.body}');
     }
   }
 

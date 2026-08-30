@@ -80,7 +80,7 @@ class ResultScreen extends StatelessWidget {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
-                          color: isHealthy ? Colors.green.withOpacity(0.2) : Colors.red.withOpacity(0.2),
+                          color: isHealthy ? Colors.green.withValues(alpha: 0.2) : Colors.red.withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(

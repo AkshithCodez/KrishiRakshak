@@ -5,6 +5,7 @@ import '../services/api_service.dart';
 import '../services/location_service.dart';
 import 'result_screen.dart';
 
+
 class CameraScreen extends StatefulWidget {
   const CameraScreen({super.key});
 
@@ -71,12 +72,55 @@ class _CameraScreenState extends State<CameraScreen> {
           ),
         ),
       );
+    } on OodException catch (e) {
+      // OOD rejection: show a friendly dialog — NOT a snack bar
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      showDialog(
+        context: context,
+        builder: (_) => AlertDialog(
+          backgroundColor: const Color(0xFF16251E),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Row(
+            children: [
+              Icon(Icons.warning_amber_rounded, color: Colors.amberAccent, size: 24),
+              SizedBox(width: 8),
+              Text('Image Not Recognized', style: TextStyle(color: Colors.white, fontSize: 16)),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                e.message,
+                style: const TextStyle(color: Colors.white70, fontSize: 14, height: 1.4),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Confidence: ${(e.confidence * 100).toStringAsFixed(1)}%',
+                style: const TextStyle(color: Colors.white38, fontSize: 12),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'Supported crops: Tomato, Potato, Apple, Corn, Peach, Cherry, Pepper, Blueberry, Raspberry, Soybean, Squash, Strawberry, Orange, Grape.',
+                style: TextStyle(color: Colors.white38, fontSize: 11, height: 1.3),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Try Again', style: TextStyle(color: Color(0xFF10B981))),
+            ),
+          ],
+        ),
+      );
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _isLoading = false;
       });
-
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error diagnosing leaf: $e'),

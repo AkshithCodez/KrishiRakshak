@@ -11,6 +11,7 @@ Usage:
     uvicorn app:app --host 0.0.0.0 --port 8001
 """
 
+import math
 import os
 import io
 import json
@@ -20,6 +21,7 @@ from contextlib import asynccontextmanager
 import torch
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from PIL import Image
 
@@ -42,6 +44,14 @@ MODEL_PATH = os.environ.get("MODEL_PATH", "../models/best_model.pt")
 TREATMENTS_PATH = os.environ.get("TREATMENTS_PATH", "treatments.json")
 MAX_FILE_SIZE = 5 * 1024 * 1024  # 5 MB
 ALLOWED_TYPES = {"image/jpeg", "image/png", "image/bmp", "image/webp"}
+
+# OOD Detection thresholds
+# If top-1 confidence is below this, the image is rejected as unsupported.
+CONFIDENCE_THRESHOLD = float(os.environ.get("CONFIDENCE_THRESHOLD", "0.65"))
+# Secondary entropy guard: if distribution entropy exceeds this fraction of
+# maximum possible entropy (log(num_classes)), also reject.
+# 0.75 means "the distribution is only 25% more peaked than random" → too uncertain.
+MAX_ENTROPY_RATIO = float(os.environ.get("MAX_ENTROPY_RATIO", "0.75"))
 
 # ──────────────────────────────────────────────
 # Global state (loaded at startup)
@@ -162,8 +172,18 @@ class PredictionResult(BaseModel):
 
 
 class PredictionResponse(BaseModel):
+    success: bool = True
+    is_supported: bool = True
     prediction: PredictionResult
     top_3: list[PredictionResult]
+
+
+class OodRejectionResponse(BaseModel):
+    success: bool = False
+    is_supported: bool = False
+    message: str
+    confidence: float
+    top_predictions: list[dict]
 
 
 # ──────────────────────────────────────────────
@@ -180,14 +200,19 @@ async def health():
     }
 
 
-@app.post("/predict", response_model=PredictionResponse)
+@app.post("/predict")
 async def predict(file: UploadFile = File(...)):
     """
     Upload a leaf image and receive a disease diagnosis.
-    
+
     - Accepted formats: JPEG, PNG, BMP, WebP
     - Max file size: 5 MB
-    - Returns: top prediction + top-3 alternatives with treatments
+    - Returns: top prediction + top-3 alternatives with treatments, OR an OOD
+      rejection response if the image is not confidently classifiable.
+
+    OOD Rejection Conditions (both checked):
+      1. top-1 confidence < CONFIDENCE_THRESHOLD (default 0.65)
+      2. Prediction entropy > MAX_ENTROPY_RATIO * log(num_classes)
     """
     # Validate file type
     if file.content_type not in ALLOWED_TYPES:
@@ -210,7 +235,7 @@ async def predict(file: UploadFile = File(...)):
     except Exception:
         raise HTTPException(status_code=400, detail="Could not decode image file.")
 
-    # Inference
+    # ── Inference ─────────────────────────────────────────────────────────────
     start = time.time()
     tensor = transform(image).unsqueeze(0).to(device)
 
@@ -220,8 +245,17 @@ async def predict(file: UploadFile = File(...)):
 
     inference_ms = (time.time() - start) * 1000
 
-    # Top-3 predictions
-    top_probs, top_indices = probs.topk(3)
+    # ── OOD Detection ─────────────────────────────────────────────────────────
+    top_confidence = probs.max().item()
+
+    # Shannon entropy of the softmax distribution
+    # High entropy = uncertain / spread out = likely OOD
+    entropy = -float(torch.sum(probs * torch.log(probs + 1e-9)))
+    max_possible_entropy = math.log(len(class_names))  # log(38) ≈ 3.64
+    entropy_ratio = entropy / max_possible_entropy
+
+    # Build top-3 summary regardless (returned in rejection too for debugging)
+    top_probs, top_indices = probs.topk(min(3, len(class_names)))
     results = []
     for prob, idx in zip(top_probs, top_indices):
         class_name = class_names[idx.item()]
@@ -229,7 +263,6 @@ async def predict(file: UploadFile = File(...)):
         crop = parts[0].replace("_", " ") if len(parts) >= 1 else "Unknown"
         disease_name = parts[1].replace("_", " ") if len(parts) >= 2 else "Unknown"
 
-        # Look up treatment
         treatment_text = "No treatment information available."
         if class_name in treatments:
             treatment_text = treatments[class_name].get("recommendation", treatment_text)
@@ -245,7 +278,54 @@ async def predict(file: UploadFile = File(...)):
             inference_time_ms=round(inference_ms, 1),
         ))
 
-    return PredictionResponse(
-        prediction=results[0],
-        top_3=results,
+    # Reject if below confidence threshold OR entropy is too high
+    is_low_confidence = top_confidence < CONFIDENCE_THRESHOLD
+    is_high_entropy = entropy_ratio > MAX_ENTROPY_RATIO
+
+    if is_low_confidence or is_high_entropy:
+        rejection_reason = []
+        if is_low_confidence:
+            rejection_reason.append(f"top confidence {top_confidence:.1%} < threshold {CONFIDENCE_THRESHOLD:.1%}")
+        if is_high_entropy:
+            rejection_reason.append(f"entropy ratio {entropy_ratio:.2f} > max {MAX_ENTROPY_RATIO}")
+
+        print(
+            f"[ML Server] OOD Rejection — "
+            f"confidence={top_confidence:.3f}, entropy_ratio={entropy_ratio:.2f} — "
+            f"Reason: {'; '.join(rejection_reason)}"
+        )
+
+        return JSONResponse(
+            status_code=200,
+            content={
+                "success": False,
+                "is_supported": False,
+                "message": (
+                    "Image could not be reliably classified. "
+                    "Please ensure the photo is clear and shows a leaf from one of the "
+                    "14 supported crops (e.g. Tomato, Potato, Apple, Corn, Peach, "
+                    "Cherry, Pepper, Blueberry, Raspberry, Soybean, Squash, Strawberry, "
+                    "Orange, or Grape)."
+                ),
+                "confidence": round(top_confidence, 4),
+                "entropy_ratio": round(entropy_ratio, 4),
+                "top_predictions": [
+                    {"class": r.class_name, "confidence": r.confidence}
+                    for r in results
+                ],
+            },
+        )
+
+    # ── Successful Prediction ─────────────────────────────────────────────────
+    print(
+        f"[ML Server] Prediction accepted — "
+        f"{results[0].class_name} @ {top_confidence:.1%} "
+        f"(entropy_ratio={entropy_ratio:.2f})"
     )
+
+    return {
+        "success": True,
+        "is_supported": True,
+        "prediction": results[0].model_dump(),
+        "top_3": [r.model_dump() for r in results],
+    }

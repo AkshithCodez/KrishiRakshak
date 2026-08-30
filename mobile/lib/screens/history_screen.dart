@@ -91,7 +91,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                       Container(
                         padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
-                          color: isHealthy ? Colors.green.withOpacity(0.15) : Colors.amber.withOpacity(0.15),
+                          color: isHealthy ? Colors.green.withValues(alpha: 0.15) : Colors.amber.withValues(alpha: 0.15),
                           shape: BoxShape.circle,
                         ),
                         child: Icon(
