@@ -201,18 +201,19 @@ async def health():
 
 
 @app.post("/predict")
-async def predict(file: UploadFile = File(...)):
+async def predict(
+    file: UploadFile = File(...),
+    crop: str | None = None,
+):
     """
     Upload a leaf image and receive a disease diagnosis.
 
     - Accepted formats: JPEG, PNG, BMP, WebP
     - Max file size: 5 MB
+    - Optional form field `crop`: restrict classification to one crop family
+      (e.g. "Peach", "Tomato"). Omit for auto-detect across all 38 classes.
     - Returns: top prediction + top-3 alternatives with treatments, OR an OOD
       rejection response if the image is not confidently classifiable.
-
-    OOD Rejection Conditions (both checked):
-      1. top-1 confidence < CONFIDENCE_THRESHOLD (default 0.65)
-      2. Prediction entropy > MAX_ENTROPY_RATIO * log(num_classes)
     """
     # Validate file type
     if file.content_type not in ALLOWED_TYPES:
@@ -240,27 +241,60 @@ async def predict(file: UploadFile = File(...)):
     tensor = transform(image).unsqueeze(0).to(device)
 
     with torch.no_grad():
-        output = model(tensor)
-        probs = torch.softmax(output, dim=1).squeeze()
+        output = model(tensor)  # raw logits, shape [1, num_classes]
 
     inference_ms = (time.time() - start) * 1000
 
-    # ── OOD Detection ─────────────────────────────────────────────────────────
+    # ── Crop-Guided Classification ─────────────────────────────────────────────
+    guided_mode = False
+    if crop:
+        crop_lower = crop.strip().lower()
+        crop_indices = [
+            i for i, cn in enumerate(class_names)
+            if cn.split("___")[0].replace("_", " ").lower() == crop_lower
+        ]
+        if crop_indices:
+            guided_mode = True
+            mask = torch.full_like(output, float("-inf"))
+            for idx in crop_indices:
+                mask[0, idx] = output[0, idx]
+            probs = torch.softmax(mask, dim=1).squeeze()
+            top_k = min(len(crop_indices), 3)
+            print(
+                f"[ML Server] Crop-guided mode: '{crop}' "
+                f"({len(crop_indices)} classes, top-{top_k})"
+            )
+        else:
+            print(f"[ML Server] Warning: unknown crop '{crop}', falling back to auto-detect")
+            probs = torch.softmax(output, dim=1).squeeze()
+            top_k = 3
+    else:
+        probs = torch.softmax(output, dim=1).squeeze()
+        top_k = 3
+
+    # ── OOD Detection (auto-detect mode only) ──────────────────────────────────
     top_confidence = probs.max().item()
 
-    # Shannon entropy of the softmax distribution
-    # High entropy = uncertain / spread out = likely OOD
-    entropy = -float(torch.sum(probs * torch.log(probs + 1e-9)))
-    max_possible_entropy = math.log(len(class_names))  # log(38) ≈ 3.64
-    entropy_ratio = entropy / max_possible_entropy
+    if not guided_mode:
+        entropy = -float(torch.sum(probs * torch.log(probs + 1e-9)))
+        max_possible_entropy = math.log(len(class_names))
+        entropy_ratio = entropy / max_possible_entropy
+        is_low_confidence = top_confidence < CONFIDENCE_THRESHOLD
+        is_high_entropy = entropy_ratio > MAX_ENTROPY_RATIO
+    else:
+        entropy_ratio = 0.0
+        is_low_confidence = False
+        is_high_entropy = False
 
-    # Build top-3 summary regardless (returned in rejection too for debugging)
-    top_probs, top_indices = probs.topk(min(3, len(class_names)))
+    # ── Build Top-k Results ────────────────────────────────────────────────────
+    top_probs, top_indices = probs.topk(min(top_k, len(class_names)))
     results = []
     for prob, idx in zip(top_probs, top_indices):
+        if prob.item() < 1e-6:
+            continue
         class_name = class_names[idx.item()]
         parts = class_name.split("___")
-        crop = parts[0].replace("_", " ") if len(parts) >= 1 else "Unknown"
+        crop_label = parts[0].replace("_", " ") if len(parts) >= 1 else "Unknown"
         disease_name = parts[1].replace("_", " ") if len(parts) >= 2 else "Unknown"
 
         treatment_text = "No treatment information available."
@@ -270,7 +304,7 @@ async def predict(file: UploadFile = File(...)):
             treatment_text = "No disease detected. Continue regular monitoring and care."
 
         results.append(PredictionResult(
-            crop=crop,
+            crop=crop_label,
             disease=disease_name,
             class_name=class_name,
             confidence=round(prob.item(), 4),
@@ -278,16 +312,20 @@ async def predict(file: UploadFile = File(...)):
             inference_time_ms=round(inference_ms, 1),
         ))
 
-    # Reject if below confidence threshold OR entropy is too high
-    is_low_confidence = top_confidence < CONFIDENCE_THRESHOLD
-    is_high_entropy = entropy_ratio > MAX_ENTROPY_RATIO
+    if not results:
+        raise HTTPException(status_code=500, detail="Model produced no valid predictions.")
 
+    # ── OOD Rejection ─────────────────────────────────────────────────────────
     if is_low_confidence or is_high_entropy:
         rejection_reason = []
         if is_low_confidence:
-            rejection_reason.append(f"top confidence {top_confidence:.1%} < threshold {CONFIDENCE_THRESHOLD:.1%}")
+            rejection_reason.append(
+                f"top confidence {top_confidence:.1%} < threshold {CONFIDENCE_THRESHOLD:.1%}"
+            )
         if is_high_entropy:
-            rejection_reason.append(f"entropy ratio {entropy_ratio:.2f} > max {MAX_ENTROPY_RATIO}")
+            rejection_reason.append(
+                f"entropy ratio {entropy_ratio:.2f} > max {MAX_ENTROPY_RATIO}"
+            )
 
         print(
             f"[ML Server] OOD Rejection — "
@@ -303,9 +341,7 @@ async def predict(file: UploadFile = File(...)):
                 "message": (
                     "Image could not be reliably classified. "
                     "Please ensure the photo is clear and shows a leaf from one of the "
-                    "14 supported crops (e.g. Tomato, Potato, Apple, Corn, Peach, "
-                    "Cherry, Pepper, Blueberry, Raspberry, Soybean, Squash, Strawberry, "
-                    "Orange, or Grape)."
+                    "14 supported crops. You can also select your crop manually."
                 ),
                 "confidence": round(top_confidence, 4),
                 "entropy_ratio": round(entropy_ratio, 4),

@@ -36,14 +36,23 @@ Unlike standalone diagnostic apps (e.g., Plantix), this project aggregates diagn
 ## Current Project State (What has been built)
 - [x] Full directory scaffolding
 - [x] Backend database models (UUID cross-compatible with Postgres/SQLite)
-- [x] Backend REST API endpoints (`/scans`, `/outbreaks`, `/stats`)
+- [x] Backend REST API endpoints (`/scans`, `/outbreaks`, `/stats`, `/auth`)
 - [x] Outbreak detection logic (`backend/app/services/outbreak.py`)
 - [x] ML Training on GPU + ONNX export completed (`ml/models/best_model.pt`)
 - [x] ML Serving API (`ml/serving/app.py`) live with trained weights
+- [x] Crop-guided logit masking, renormalization, and OOD confidence thresholding
 - [x] Interactive Web Dashboard (`dashboard/index.html` with Leaflet auto-zoom)
-- [x] `seed_data.py` script to generate fake outbreak clusters for demo purposes.
+- [x] `seed_data.py` script to generate fake outbreak clusters for demo purposes
+- [x] Mobile UX Overhaul:
+  - [x] 7-language native-script matrix on first open (`తెలుగు`, `हिन्दी`, `English`, `ಕನ್ನಡ`, `தமிழ்`, `मराठी`, `বাংলা`) with persistence & in-app switcher
+  - [x] Low-friction Phone + OTP auth with Demo OTP (1234)
+  - [x] Tab 1: "Check My Crop" diagnostic flow with horizontal crop selector
+  - [x] Tab 2: "History" with phone association & dates
+  - [x] Tab 3: "Nearby Alerts" regional outbreak monitoring with ~5km cluster indicators
+  - [x] Initial AI Classification advisory disclaimer & 1-click area disease reporting confirmation
+  - [x] 0 analyzer issues (`flutter analyze` clean)
 
 ## Next Steps
-1. **ML OOD Update**: Implement the Confidence Threshold check inside `/predict`.
-2. **Mobile App**: Begin building the Flutter UI focusing exactly on the requested UX requirements (Language screen -> OTP -> 3 Tabs).
-3. **Integration Testing**: End-to-end test from mobile photo capture to dashboard alert generation.
+1. **Live Verification**: Run mobile client alongside `backend` (port 8000) and `ml.serving` (port 8001).
+2. **Device / Emulator APK Build**: Test packaging on Android emulator or physical device.
+3. **End-to-End Demo Test**: Test 1-click report submission from mobile and observe real-time marker update on the web dashboard (`dashboard/index.html`).

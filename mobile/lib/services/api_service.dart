@@ -42,7 +42,11 @@ class ApiService {
   /// Upload photo to ML Service for instant diagnosis.
   /// Throws [OodException] if the image is rejected as unsupported/unclear.
   /// Throws [Exception] on any other server-side error.
-  static Future<ScanResult> diagnoseLeaf(Uint8List imageBytes, {String filename = 'leaf.jpg'}) async {
+  static Future<ScanResult> diagnoseLeaf(
+    Uint8List imageBytes, {
+    String filename = 'leaf.jpg',
+    String? selectedCrop,
+  }) async {
     final uri = Uri.parse('$mlBaseUrl/predict');
     final request = http.MultipartRequest('POST', uri);
 
@@ -53,6 +57,11 @@ class ApiService {
       contentType: MediaType('image', 'jpeg'),
     );
     request.files.add(multipartFile);
+
+    // Send crop hint if user selected one manually
+    if (selectedCrop != null && selectedCrop.isNotEmpty) {
+      request.fields['crop'] = selectedCrop;
+    }
 
     final streamedResponse = await request.send().timeout(const Duration(seconds: 15));
     final response = await http.Response.fromStream(streamedResponse);
@@ -71,7 +80,11 @@ class ApiService {
         );
       }
 
-      return ScanResult.fromPredictionJson(data['prediction']);
+      final top3Raw = data['top_3'] as List<dynamic>?;
+      return ScanResult.fromPredictionJson(
+        data['prediction'] as Map<String, dynamic>,
+        top3Raw: top3Raw,
+      );
     } else {
       throw Exception('ML Diagnosis failed: ${response.statusCode} - ${response.body}');
     }
