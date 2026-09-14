@@ -44,11 +44,40 @@ python backend/seed_data.py
 
 ---
 
-## Viewing the Dashboard
-Once the Backend API (Terminal 2) is running and you have seeded the data (Terminal 3), you can view the live dashboard:
+## Open the application
 
-1. Open your File Explorer.
-2. Navigate to the `KrishiRakshak\dashboard\` folder.
-3. Double-click **`index.html`** to open it in your web browser.
+With both services running, open:
 
-You can click the **⟳ Refresh Data** button in the dashboard to see new scans appear in real-time.
+- Public landing page: <http://localhost:8000/>
+- Officer dashboard: <http://localhost:8000/officer.html>
+
+Use the HTTP URLs above rather than opening the HTML file directly. The farmer
+photo modal uses `/api/diagnose`, a same-origin adapter to the existing ML
+`/predict` endpoint. Crop hints are forwarded as query parameters, matching the
+current ML contract. Reports use the existing `/api/scans` endpoint and request
+the farmer's location only on submission. Camera/location access on a physical
+phone requires HTTPS (localhost is allowed for local desktop testing).
+
+The public page has a nine-stage desktop story and six-stage phone story. It
+serves `dashboard/models/TomatoPlant_Final.glb` with local Three.js 0.160.0 modules.
+All story examples are illustrations; installation records appear in the officer
+dashboard. Seeded records are demonstration data. The existing classifier needs
+independent validation before its results can be relied on in the field.
+
+The officer map uses the standard OpenStreetMap tile service with attribution.
+Follow its [tile usage policy](https://operations.osmfoundation.org/policies/tiles/)
+when deploying beyond local evaluation. Map tiles and the existing officer-page
+Leaflet/Chart.js dependencies require an internet connection.
+
+## Landing-page verification
+
+```powershell
+$env:PYTHONDONTWRITEBYTECODE="1"
+.\venv\Scripts\python.exe -m unittest discover -s tests -v
+```
+
+Tests isolate report writes in an in-memory database. The browser harness at
+`tests/browser-harness.html` can be temporarily copied to `dashboard/qa.html` and
+opened at `/qa.html` for reduced-motion, WebGL-failure, diagnosis and report
+failure tests. It uses clearly labeled synthetic responses without posting
+reports. Remove that temporary copy after testing.

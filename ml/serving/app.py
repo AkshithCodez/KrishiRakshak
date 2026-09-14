@@ -77,7 +77,7 @@ def load_model():
         resolved_treatments_path = os.path.join(os.path.dirname(__file__), "treatments.json")
 
     if os.path.exists(resolved_treatments_path):
-        with open(resolved_treatments_path) as f:
+        with open(resolved_treatments_path, encoding="utf-8") as f:
             treatments = json.load(f)
         print(f"[ML Server] Treatments loaded: {len(treatments)} entries")
     else:

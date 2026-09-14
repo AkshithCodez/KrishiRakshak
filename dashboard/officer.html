@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KrishiRakshak — Officer dashboard</title><link rel="icon" href="botanical.svg" type="image/svg+xml">
+
+  <!-- Google Fonts: Outfit (Headings) & Inter (Body & Telemetry) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+
+  <!-- Leaflet Map CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+
+  <!-- Custom Design System CSS -->
+  <link rel="stylesheet" href="style.css"><link rel="stylesheet" href="workflow.css">
+</head>
+<body>
+  <div class="app-container">
+
+    <!-- ── 1. GLOBAL TOP NAVIGATION ───────────────────────────────────── -->
+    <header class="top-nav">
+      <a class="brand" href="/" style="text-decoration:none;color:inherit">
+        <div class="logo-icon">🌾</div>
+        <div>
+          <div class="brand-title">KrishiRakshak</div>
+          <p class="brand-subtitle">AI Crop Disease Diagnostic & Regional Surveillance Portal</p>
+        </div>
+      </a>
+
+      <div class="nav-links">
+        <button id="navDiagnoseBtn" class="nav-link-btn" onclick="openDiagnosticModal()">📷 Check My Crop</button>
+        <a href="#surveillanceSection" class="nav-link-btn">🗺️ Regional Outbreaks</a>
+        <span class="live-indicator">
+          <span class="pulse-dot"></span> <span id="navOutbreakStatus">Live Surveillance Active</span>
+        </span>
+        <button id="refreshBtn" class="btn btn-secondary">⟳ Refresh Data</button>
+      </div>
+    </header>
+
+    <section id="surveillanceSection" class="surveillance-section">
+      <div class="surveillance-header-bar">
+        <div>
+          <div class="section-badge">REGIONAL DEFENSE</div>
+          <h2 class="section-title">Epidemiological Surveillance Dashboard</h2>
+          <p class="section-desc">Records from this installation, which may include seeded demonstration reports.</p>
+        </div>
+        <div class="surveillance-actions">
+          <a class="btn btn-secondary" href="/">Back to KrishiRakshak</a>
+        </div>
+      </div>
+
+      <!-- Metrics Grid -->
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <div class="metric-icon alert-icon">🚨</div>
+          <div class="metric-info">
+            <span class="metric-label">Active Outbreaks</span>
+            <h2 id="metricOutbreaks" class="metric-val text-danger">0</h2>
+            <span class="metric-sub">≥3 farmers in ~5km cell</span>
+          </div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-icon scan-icon">📷</div>
+          <div class="metric-info">
+            <span class="metric-label">Total Field Scans</span>
+            <h2 id="metricTotalScans" class="metric-val">0</h2>
+            <span id="metricScans7d" class="metric-sub">0 in last 7 days</span>
+          </div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-icon farmer-icon">👨‍🌾</div>
+          <div class="metric-info">
+            <span class="metric-label">Active Farmers / Devices</span>
+            <h2 id="metricDevices" class="metric-val">0</h2>
+            <span class="metric-sub">Anonymous UUID network</span>
+          </div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-icon crop-icon">🌾</div>
+          <div class="metric-info">
+            <span class="metric-label">Monitored Crops</span>
+            <h2 class="metric-val">14 Crops</h2>
+            <span class="metric-sub">38 disease & healthy classes</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Main Content Layout: Outbreaks & Map -->
+      <div class="dashboard-main-grid">
+        <!-- Outbreak Alert Panel -->
+        <section class="panel outbreak-panel">
+          <div class="panel-header">
+            <h3>🚨 Active Outbreak Clusters</h3>
+            <span id="outbreakCountBadge" class="badge badge-danger">0 Alerts</span>
+          </div>
+          <p class="panel-desc">Surfaced when multiple distinct farmers report matching disease signatures in a ~5km geohash cluster within 7 days.</p>
+
+          <div id="outbreakList" class="outbreak-list">
+            <div class="empty-state">Loading outbreak reports...</div>
+          </div>
+        </section>
+
+        <!-- Geospatial Map View -->
+        <section class="panel map-panel">
+          <div class="panel-header">
+            <h3>🗺️ Real-Time Field Scan Geolocation Map</h3>
+            <div class="map-legend">
+              <span class="legend-item"><span class="legend-dot dot-outbreak"></span> Outbreak Cluster</span>
+              <span class="legend-item"><span class="legend-dot dot-disease"></span> Disease Scan</span>
+              <span class="legend-item"><span class="legend-dot dot-healthy"></span> Healthy Crop</span>
+            </div>
+          </div>
+          <div id="map" class="map-container"></div>
+        </section>
+      </div>
+
+      <!-- Disease Statistics Chart & Recent Scans Table -->
+      <div class="dashboard-bottom-grid">
+        <!-- Chart Panel -->
+        <section class="panel chart-panel">
+          <div class="panel-header">
+            <h3>📊 Top Diagnosed Crop Diseases</h3>
+          </div>
+          <div class="chart-container">
+            <canvas id="diseaseChart"></canvas>
+          </div>
+        </section>
+
+        <!-- Recent Scans Table -->
+        <section class="panel table-panel">
+          <div class="panel-header">
+            <h3>📋 Recent Field Reports</h3>
+            <span id="scansCountBadge" class="badge">0 Scans</span>
+          </div>
+          <div class="table-wrapper">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Crop</th>
+                  <th>Diagnosis</th>
+                  <th>Confidence</th>
+                  <th>Geohash</th>
+                  <th>Time</th>
+                </tr>
+              </thead>
+              <tbody id="recentScansBody">
+                <tr>
+                  <td colspan="5" class="empty-cell">Loading scans...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </section>
+
+    <div id="diagnosticModal" class="diagnostic-modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <div class="modal-backdrop" onclick="closeDiagnosticModal()"></div>
+      <div class="modal-card">
+        <div class="modal-header">
+          <div class="modal-title-wrap">
+            <span class="modal-icon">🌱</span>
+            <div>
+              <h2 id="modalTitle">Check My Crop</h2>
+              <p>Photo diagnosis and field reporting</p>
+            </div>
+          </div>
+          <button aria-label="Close diagnosis" class="btn-close-modal" onclick="closeDiagnosticModal()" title="Close">&times;</button>
+        </div>
+
+        <div class="modal-body"><p id="diagnosticStatus" role="status" aria-live="polite"></p>
+          <!-- Step A: Upload & Crop Guidance -->
+          <div class="diag-form-step">
+            <label class="form-label">1. Choose your crop (optional)</label>
+            <div class="crop-select-grid" id="modalCropGrid">
+              <button type="button" class="crop-chip active" data-crop="">🌿 Auto-Detect</button>
+              <button type="button" class="crop-chip" data-crop="Tomato">🍅 Tomato</button>
+              <button type="button" class="crop-chip" data-crop="Peach">🍑 Peach</button>
+              <button type="button" class="crop-chip" data-crop="Potato">🥔 Potato</button>
+              <button type="button" class="crop-chip" data-crop="Apple">🍎 Apple</button>
+              <button type="button" class="crop-chip" data-crop="Grape">🍇 Grape</button>
+              <button type="button" class="crop-chip" data-crop="Corn (maize)">🌽 Corn</button>
+              <button type="button" class="crop-chip" data-crop="Pepper, bell">🌶️ Pepper</button>
+            </div>
+
+            <label class="form-label" style="margin-top: 16px;">2. Add a clear leaf photo</label>
+            <div id="dropzoneBox" class="dropzone-box" role="button" tabindex="0" aria-label="Choose a leaf photo" onclick="document.getElementById('leafFileInput').click()">
+              <input type="file" id="leafFileInput" accept="image/*" style="display: none;" onchange="handleLeafFileSelect(event)">
+              <div id="dropzonePrompt" class="dropzone-prompt">
+                <div class="drop-icon">📷</div>
+                <strong>Choose a leaf photo</strong>
+                <small>JPG, PNG, BMP or WebP · up to 5 MB</small>
+              </div>
+              <img id="leafPreviewImg" class="leaf-preview-img" alt="Leaf Preview" style="display: none;">
+            </div>
+            <button type="button" class="btn btn-secondary btn-block" onclick="document.getElementById('cameraFileInput').click()">Take a photo</button><input id="cameraFileInput" type="file" accept="image/*" capture="environment" hidden onchange="handleLeafFileSelect(event)">
+
+            <button id="runDiagBtn" class="btn btn-primary btn-block" style="margin-top: 16px;" onclick="runLeafDiagnosis()" disabled>
+              Run AI diagnosis
+            </button>
+          </div>
+
+          <!-- Step B: Live Diagnostic Results -->
+          <div id="diagResultBox" aria-live="polite" class="diag-result-box" style="display: none;">
+            <!-- AI Disclaimer -->
+            <div class="ai-advisory-banner">
+              ⚠️ <strong>Initial AI Classification</strong>. Consult your local agricultural extension officer for severe infestations.
+            </div>
+
+            <div class="result-primary-card">
+              <div class="result-meta-line">
+                <span id="diagResultCrop" class="res-crop-badge">TOMATO</span>
+                <span id="diagResultConfidence" class="res-conf-badge"></span>
+              </div>
+              <h3 id="diagResultDisease" class="res-disease-title"></h3>
+              <p id="diagResultTreatment" class="res-treatment-desc">
+                Loading treatment recommendations...
+              </p>
+            </div>
+
+            <!-- Top 3 Alternative Candidates -->
+            <div class="top3-box" id="diagTop3Box">
+              <div class="top3-title">Other model suggestions</div>
+              <div id="diagTop3List" class="top3-list"></div>
+            </div>
+
+            <!-- 1-Click Outbreak Report Card -->
+            <div class="report-trigger-card">
+              <div class="report-prompt-text"><p>Your location is requested only when you submit. The report shares your crop result and location with this portal.</p>
+                <strong>📢 Report this disease occurrence in your area?</strong>
+                <p>Helps generate regional outbreak warnings for neighboring farmers within ~5km.</p>
+              </div>
+              <button id="submitScanReportBtn" class="btn btn-accent btn-block" onclick="submitCurrentScanReport()">
+                Share location & report
+              </button>
+              <div id="reportSuccessBadge" class="report-success-badge" style="display: none;">
+                ✅ Report Logged to Community Outbreak Tracker!
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── 6. FOOTER ────────────────────────────────────────────────── -->
+    <footer class="dashboard-footer">
+      <div class="footer-content">
+        <p><strong>KrishiRakshak</strong> &bull; AI Crop Disease Diagnostic & Regional Outbreak Surveillance System</p>
+        <p class="footer-meta">PlantVillage 38-Class Transfer Learning CNN &bull; Geospatial Geohashing Aggregation &bull; Flutter Android + FastAPI Architecture</p>
+      </div>
+    </footer>
+
+  </div>
+
+  <!-- Chart.js and Leaflet JS -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+  <!-- 3D Hero Experience (ES Module) -->
+
+
+  <!-- Application Logic & Surveillance Map -->
+  <script src="app.js"></script>
+</body>
+</html>

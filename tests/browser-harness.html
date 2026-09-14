@@ -1,0 +1,52 @@
+<!doctype html><meta charset="utf-8"><title>KrishiRakshak local browser QA</title>
+<style>body{margin:0;background:#eee;color:#111;font:14px Arial}header{padding:15px}button{padding:12px;margin:5px}iframe{width:100%;height:850px;border:0}pre{white-space:pre-wrap}</style>
+<header><strong>Local QA only · synthetic responses · no installation records written</strong><div><button data-mode="reduced">Reduced motion</button><button data-mode="fallback">WebGL failure</button><button data-mode="asset">Model download failure</button><button data-mode="offline">Diagnosis offline</button><button data-mode="unsupported">Unsupported photo</button><button data-mode="report">Report success</button><button data-mode="denied">Location denied</button><button data-mode="report-error">Report error</button></div><pre id="result">Choose a test.</pre></header><iframe title="Application under test"></iframe>
+<script>
+const frame=document.querySelector('iframe'),result=document.querySelector('#result');
+document.querySelectorAll('button').forEach(button=>button.onclick=async()=>{
+  const mode=button.dataset.mode;
+  result.textContent='Running '+mode+'…';
+  let html=await (await fetch('/')).text();
+  const setup=`<script>
+    window.qaMode=${JSON.stringify(mode)};
+    if(qaMode==='reduced') { const original=window.matchMedia.bind(window); window.matchMedia=q=>{const m=original(q); if(q.includes('prefers-reduced-motion')) Object.defineProperty(m,'matches',{value:true});return m;}; }
+    if(qaMode==='fallback') { const original=HTMLCanvasElement.prototype.getContext; HTMLCanvasElement.prototype.getContext=function(type,...args){return type.includes('webgl') ? null : original.call(this,type,...args);}; }
+    const realFetch=window.fetch.bind(window);
+    window.fetch=async (input,options)=>{
+      const url=typeof input==='string'?input:input.url;
+      if(qaMode==='asset' && url.includes('TomatoPlant_Final.glb')) return new Response('Missing test asset',{status:404});
+      if(url.includes('/api/diagnose')) {
+        if(qaMode==='offline') return new Response(JSON.stringify({detail:'The diagnosis service is unavailable. Please try again.'}),{status:503});
+        if(qaMode==='unsupported') return new Response(JSON.stringify({is_supported:false,message:'This sample is unsupported. Try a clear leaf photo.'}));
+        return new Response(JSON.stringify({is_supported:true,prediction:{crop:'Sample crop',disease:'Sample diagnosis',confidence:.75,treatment:'Synthetic QA guidance, not agricultural advice.'},top_3:[]}));
+      }
+      if(url.includes('/api/scans')) { window.qaPayload=JSON.parse(options.body); return new Response(JSON.stringify({id:'test-only'}),{status:qaMode==='report-error'?500:201}); }
+      return realFetch(input,options);
+    };
+    Object.defineProperty(navigator,'geolocation',{value:{getCurrentPosition(ok,fail){qaMode==='denied'?fail({code:1}):ok({coords:{latitude:0,longitude:0}});}}});
+  <\/script>`;
+  html=html.replace('<head>','<head><base href="/">'+setup);
+  frame.srcdoc=html;
+  frame.onload=async()=>{
+    const win=frame.contentWindow,doc=frame.contentDocument;
+    const wait=ms=>new Promise(r=>setTimeout(r,ms));
+    try {
+      if(['reduced','fallback','asset'].includes(mode)) {
+        for(let i=0;i<100 && doc.querySelector('#hero3dContainer').dataset.modelStatus==='loading';i++) await wait(100);
+        if(mode==='reduced'){doc.querySelector('#nextStageBtn').click();await wait(200);}
+        result.textContent=JSON.stringify({mode,...doc.querySelector('#hero3dContainer').dataset,fallbackVisible:!doc.querySelector('#hero3dFallback').hidden},null,2);
+      } else {
+        win.openDiagnosticModal();
+        const sample=doc.createElement('canvas');sample.width=8;sample.height=8;sample.getContext('2d').fillRect(0,0,8,8);
+        const blob=await new Promise(resolve=>sample.toBlob(resolve,'image/png'));
+        const file=new win.File([blob],'qa.png',{type:'image/png'});
+        win.handleLeafFileSelect({target:{files:[file]}});
+        await wait(50); await win.runLeafDiagnosis();
+        if(['report','denied','report-error'].includes(mode)) await win.submitCurrentScanReport();
+        result.textContent=JSON.stringify({mode,status:doc.querySelector('#diagnosticStatus').textContent,resultVisible:doc.querySelector('#diagResultBox').style.display!=='none',successVisible:doc.querySelector('#reportSuccessBadge').style.display!=='none',payload:win.qaPayload||null,retryEnabled:!doc.querySelector('#submitScanReportBtn').disabled},null,2);
+      }
+    } catch(error){result.textContent='FAIL: '+error.stack;}
+  };
+});
+</script>
+

@@ -12,6 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from .config import get_settings
 from .db import engine, Base
 from .routes import scans, outbreaks, stats, auth
+from .routes import diagnosis
 
 settings = get_settings()
 
@@ -44,6 +45,7 @@ app.include_router(auth.router)
 app.include_router(scans.router)
 app.include_router(outbreaks.router)
 app.include_router(stats.router)
+app.include_router(diagnosis.router)
 
 
 @app.get("/health", tags=["Health"])
@@ -53,3 +55,12 @@ def health_check():
         "app": settings.APP_NAME,
         "version": settings.APP_VERSION,
     }
+
+
+# Mount Dashboard Web Assets (Landing page, 3D models, CSS, JS)
+import os
+from fastapi.staticfiles import StaticFiles
+
+dashboard_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "dashboard"))
+if os.path.exists(dashboard_dir):
+    app.mount("/", StaticFiles(directory=dashboard_dir, html=True), name="dashboard")
