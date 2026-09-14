@@ -76,6 +76,7 @@ a:hover { color: var(--gold); }
   color: var(--text);
 }
 .wordmark svg { height: 34px; width: 28px; color: var(--green3); flex-shrink: 0; }
+.wordmark-symbol { width: 32px; height: 32px; object-fit: contain; flex-shrink: 0; display: block; }
 .wordmark small {
   display: block; font-size: 10px; color: var(--quiet);
   font-weight: 400; letter-spacing: 0.07em; margin-top: 2px;
@@ -343,9 +344,31 @@ a:hover { color: var(--gold); }
   align-items: start;
   gap: 0;
 }
+.audience.farmer-showcase {
+  grid-template-columns: 20% 48% 32%;
+  align-items: center;
+}
 .audience .eyebrow { margin-top: 8px; }
 .audience p:not(.eyebrow) {
   max-width: 460px; margin: 22px 0 28px; font-size: 15px; line-height: 1.78;
+}
+.farmer-mockup-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 12px;
+}
+.farmer-mockup-img {
+  width: 100%;
+  max-width: 290px;
+  height: auto;
+  filter: drop-shadow(0 24px 48px rgba(0, 0, 0, 0.75));
+  border-radius: 36px;
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), filter 0.4s ease;
+}
+.farmer-mockup-img:hover {
+  transform: translateY(-8px) scale(1.02);
+  filter: drop-shadow(0 30px 60px rgba(0, 0, 0, 0.85)) drop-shadow(0 0 20px rgba(16, 185, 129, 0.2));
 }
 .audience-note {
   font-size: 11.5px; color: var(--faint);
@@ -407,6 +430,18 @@ a:hover { color: var(--gold); }
   padding: 32px 0 44px;
   display: flex; align-items: center; justify-content: space-between;
   gap: 28px; font-size: 11px; color: var(--quiet);
+}
+.footer-brand {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.footer-tagline {
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  color: var(--green3);
+  font-weight: 600;
+  text-transform: uppercase;
 }
 .site-footer .wordmark { font-size: 17px; color: var(--text); }
 .site-footer p { font-size: 11px; color: var(--quiet); }
@@ -481,6 +516,7 @@ a:hover { color: var(--gold); }
   .site-nav { height: 68px; padding: 0 var(--gutter); border-bottom-color: transparent; }
   .wordmark { font-size: 17px; gap: 8px; }
   .wordmark svg { width: 20px; height: 27px; }
+  .wordmark-symbol { width: 24px; height: 24px; }
   .wordmark small { font-size: 8px; }
   .site-nav nav { font-size: 11px; gap: 6px; }
   .site-nav nav a { min-height: 44px; gap: 0; }

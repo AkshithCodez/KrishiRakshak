@@ -5,13 +5,14 @@
 <meta name="description" content="KrishiRakshak helps farmers identify crop disease and turns local observations into regional agricultural intelligence.">
 <meta name="theme-color" content="#0b100d">
 <title>KrishiRakshak — From one diseased leaf to an early regional warning.</title>
-<link rel="icon" href="botanical.svg" type="image/svg+xml">
+<link rel="icon" href="assets/images/favicon.png" type="image/png">
+<link rel="apple-touch-icon" href="assets/images/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="landing.css?v=6">
+<link rel="stylesheet" href="landing.css?v=7">
 <script type="importmap">{"imports":{"three":"/vendor/three/three.module.js"}}</script>
-<script type="module" src="landing.js?v=6"></script>
+<script type="module" src="landing.js?v=7"></script>
 </head>
 <body>
 
@@ -20,9 +21,7 @@
 <!-- ── Header ──────────────────────────────────────────────────────────── -->
 <header class="site-nav" role="banner">
   <a class="wordmark" href="/" aria-label="KrishiRakshak — home">
-    <svg viewBox="0 0 32 38" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6">
-      <path d="M16 35V15M16 25C2 25 2 14 2 10c10 0 14 7 14 15ZM16 17C30 17 30 6 30 2c-10 0-14 7-14 15Z"/>
-    </svg>
+    <img class="wordmark-symbol" src="assets/images/krishirakshak-symbol.png" alt="" width="32" height="32">
     <span>KrishiRakshak<small>Rooted in awareness.</small></span>
   </a>
   <nav aria-label="Main navigation">
@@ -172,14 +171,17 @@
   <!-- ═══════════════════════════════════════════════════════════════════
        FOR FARMERS
        ════════════════════════════════════════════════════════════════ -->
-  <section class="audience wrap" id="farmers">
+  <section class="audience wrap farmer-showcase" id="farmers">
     <p class="eyebrow">For farmers</p>
-    <div>
+    <div class="farmer-content">
       <h2>A clearer next step.<br><em>Right in your field.</em></h2>
       <p>Photograph a leaf. Understand the possible diagnosis. Choose to report it and explore nearby disease alerts — in your preferred language.</p>
       <a class="button primary" href="farmer.html">Open Farmer Portal ↗</a>
+      <span class="audience-note">Observe.<br>Understand.<br>Share.</span>
     </div>
-    <span class="audience-note">Observe.<br>Understand.<br>Share.</span>
+    <div class="farmer-mockup-wrapper">
+      <img class="farmer-mockup-img" src="assets/images/krishirakshak-mobile-mockup.png" alt="KrishiRakshak mobile application preview" width="280" height="420" loading="lazy">
+    </div>
   </section>
 
   <!-- ═══════════════════════════════════════════════════════════════════
@@ -233,7 +235,13 @@
 
 <!-- ── Footer ──────────────────────────────────────────────────────────── -->
 <footer class="site-footer wrap">
-  <a class="wordmark" href="/">KrishiRakshak</a>
+  <div class="footer-brand">
+    <a class="wordmark" href="/">
+      <img class="wordmark-symbol" src="assets/images/krishirakshak-symbol.png" alt="" width="26" height="26">
+      <span>KrishiRakshak</span>
+    </a>
+    <span class="footer-tagline">HEALTHY CROPS &bull; SAFER TOMORROWS</span>
+  </div>
   <p>From field observations to regional awareness.<br>
      <small>A college mini-project in crop health.</small></p>
   <a href="#plant-story">Back to the soil ↑</a>

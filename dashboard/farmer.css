@@ -70,12 +70,22 @@ a { color: inherit; text-decoration: none; }
   background: var(--bg);
 }
 .brand-mark {
-  width: 48px;
-  height: 58px;
+  width: 68px;
+  height: 68px;
   color: var(--green);
   margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .brand-mark svg { width: 100%; height: 100%; }
+.brand-logo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
 .app-name {
   font-size: 26px;
   font-weight: 600;
@@ -156,6 +166,7 @@ a { color: inherit; text-decoration: none; }
   margin-bottom: 40px;
 }
 .auth-brand svg { width: 28px; height: 34px; color: var(--green); }
+.auth-symbol { width: 30px; height: 30px; object-fit: contain; flex-shrink: 0; }
 .auth-brand span { font-size: 20px; font-weight: 600; letter-spacing: -0.4px; }
 .auth-card {
   width: 100%;
@@ -369,6 +380,7 @@ a { color: inherit; text-decoration: none; }
   letter-spacing: -0.3px;
 }
 .app-header-brand svg { width: 22px; height: 26px; color: var(--green); }
+.header-symbol { width: 26px; height: 26px; object-fit: contain; flex-shrink: 0; }
 .app-header-actions { display: flex; gap: 8px; }
 .icon-btn {
   display: flex;
