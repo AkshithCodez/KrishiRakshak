@@ -98,14 +98,14 @@ C:\src\flutter\bin\flutter.bat build apk --release
 
 ---
 
-## 🗺️ Viewing the Web Outbreak Dashboard
+## 🗺️ Viewing the Web Portals
 
-The administrative dashboard displays a live Leaflet.js map with heatmap/marker clusters of all farmer-reported outbreaks:
+The new unified web architecture serves all three portals directly from the FastAPI backend:
 
-1. Open your File Explorer.
-2. Navigate to: `KrishiRakshak\dashboard\index.html`
-3. Double-click **`index.html`** to open it in Chrome / Edge.
-4. Click **⟳ Refresh Data** to see recent reports and active clusters.
+1. Open your browser and navigate to: **[http://localhost:8000/](http://localhost:8000/)**
+2. **Public Landing Page**: Explains the system and provides entry points.
+3. **Farmer Portal**: Accessible via `http://localhost:8000/farmer.html`. Features language selection, OTP login, crop diagnosis, and nearby alerts.
+4. **Officer Portal**: Accessible via `http://localhost:8000/officer.html`. Displays the live epidemiological map and outbreak clusters.
 
 ---
 

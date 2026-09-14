@@ -1,0 +1,370 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#0b100d">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="description" content="KrishiRakshak Farmer Portal — Diagnose crop disease, report outbreaks, and see nearby alerts.">
+<title>KrishiRakshak — Farmer Portal</title>
+<link rel="icon" href="botanical.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&family=Noto+Sans+Telugu:wght@400;500;600;700&family=Noto+Sans+Tamil:wght@400;500;600;700&family=Noto+Sans+Kannada:wght@400;500;600;700&family=Noto+Sans+Malayalam:wght@400;500;600;700&family=Noto+Sans+Bengali:wght@400;500;600;700&family=Noto+Sans+Gurmukhi:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="farmer.css">
+</head>
+<body>
+
+<!-- ── SCREEN: Language Selection ─────────────────────────────── -->
+<div id="screenLang" class="screen active" role="main" aria-label="Language selection">
+  <div class="lang-screen">
+    <div class="brand-mark" aria-hidden="true">
+      <svg viewBox="0 0 32 38" fill="none" stroke="currentColor" stroke-width="1.6">
+        <path d="M16 35V15M16 25C2 25 2 14 2 10c10 0 14 7 14 15ZM16 17C30 17 30 6 30 2c-10 0-14 7-14 15Z"/>
+      </svg>
+    </div>
+    <h1 class="app-name">KrishiRakshak</h1>
+    <p class="lang-choose-label" id="langChooseLabel">Choose your language · अपनी भाषा चुनें</p>
+    <div class="lang-grid" id="langGrid" role="list" aria-label="Language options">
+      <!-- Populated by farmer.js -->
+    </div>
+  </div>
+</div>
+
+<!-- ── SCREEN: Phone Number Entry ─────────────────────────────── -->
+<div id="screenPhone" class="screen" role="main" aria-label="Mobile number entry">
+  <div class="auth-screen">
+    <button class="back-btn" id="phoneBackBtn" aria-label="Back to language selection">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8">
+        <path d="M12 4L6 10l6 6"/>
+      </svg>
+    </button>
+    <div class="auth-brand">
+      <svg viewBox="0 0 32 38" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+        <path d="M16 35V15M16 25C2 25 2 14 2 10c10 0 14 7 14 15ZM16 17C30 17 30 6 30 2c-10 0-14 7-14 15Z"/>
+      </svg>
+      <span>KrishiRakshak</span>
+    </div>
+    <div class="auth-card">
+      <h2 id="phoneLabelText" class="auth-title">Enter your mobile number</h2>
+      <div class="phone-input-row">
+        <span class="country-code">+91</span>
+        <input
+          type="tel"
+          id="phoneInput"
+          class="phone-input"
+          placeholder="Mobile number"
+          maxlength="10"
+          inputmode="numeric"
+          autocomplete="tel-national"
+          aria-label="Mobile number"
+          aria-describedby="phoneHint"
+        >
+      </div>
+      <p id="phoneHint" class="privacy-note" data-i18n="farmer.otp.privacyNote">Your phone number is used only to verify your account.</p>
+      <p id="phoneError" class="field-error" role="alert" aria-live="polite" hidden></p>
+      <button id="sendOtpBtn" class="primary-btn" aria-label="Send OTP">
+        <span id="sendOtpBtnText" data-i18n="farmer.otp.sendBtn">Send OTP</span>
+      </button>
+    </div>
+    <p class="demo-note" data-i18n="farmer.otp.demoNote">Demo mode — use code 1234</p>
+  </div>
+</div>
+
+<!-- ── SCREEN: OTP Verification ──────────────────────────────── -->
+<div id="screenOtp" class="screen" role="main" aria-label="OTP verification">
+  <div class="auth-screen">
+    <button class="back-btn" id="otpBackBtn" aria-label="Back to phone number">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8">
+        <path d="M12 4L6 10l6 6"/>
+      </svg>
+    </button>
+    <div class="auth-brand">
+      <svg viewBox="0 0 32 38" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+        <path d="M16 35V15M16 25C2 25 2 14 2 10c10 0 14 7 14 15ZM16 17C30 17 30 6 30 2c-10 0-14 7-14 15Z"/>
+      </svg>
+      <span>KrishiRakshak</span>
+    </div>
+    <div class="auth-card">
+      <h2 id="otpLabelText" class="auth-title">Enter verification code</h2>
+      <p id="otpHintText" class="otp-hint">Enter the 4-digit code sent to your number</p>
+      <div class="otp-row" id="otpRow">
+        <input type="tel" class="otp-box" maxlength="1" inputmode="numeric" aria-label="OTP digit 1" id="otp0">
+        <input type="tel" class="otp-box" maxlength="1" inputmode="numeric" aria-label="OTP digit 2" id="otp1">
+        <input type="tel" class="otp-box" maxlength="1" inputmode="numeric" aria-label="OTP digit 3" id="otp2">
+        <input type="tel" class="otp-box" maxlength="1" inputmode="numeric" aria-label="OTP digit 4" id="otp3">
+      </div>
+      <p id="otpError" class="field-error" role="alert" aria-live="polite" hidden></p>
+      <button id="verifyOtpBtn" class="primary-btn" aria-label="Verify OTP">
+        <span id="verifyOtpBtnText" data-i18n="farmer.otp.verifyBtn">Verify</span>
+      </button>
+      <div class="resend-row">
+        <span id="resendTimer" class="resend-timer"></span>
+        <button id="resendBtn" class="resend-btn" disabled aria-label="Resend OTP">
+          <span data-i18n="farmer.otp.resend">Resend OTP</span>
+        </button>
+      </div>
+    </div>
+    <p class="demo-note" data-i18n="farmer.otp.demoNote">Demo mode — use code 1234</p>
+  </div>
+</div>
+
+<!-- ── SCREEN: Farmer Home ────────────────────────────────────── -->
+<div id="screenHome" class="screen" role="main" aria-label="Farmer home">
+  <div class="farmer-app">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="app-header-brand">
+        <svg viewBox="0 0 32 38" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+          <path d="M16 35V15M16 25C2 25 2 14 2 10c10 0 14 7 14 15ZM16 17C30 17 30 6 30 2c-10 0-14 7-14 15Z"/>
+        </svg>
+        <span>KrishiRakshak</span>
+      </div>
+      <div class="app-header-actions">
+        <button class="icon-btn" id="langSwitchBtn" aria-label="Change language" title="Change language">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Home Content -->
+    <div class="home-body" id="homeBody">
+      <div class="home-greeting">
+        <p class="home-title" id="homeTitle" data-i18n="farmer.home.title">Hello</p>
+        <p class="home-subtitle" id="homeSubtitle" data-i18n="farmer.home.subtitle">What would you like to do?</p>
+      </div>
+
+      <!-- Primary Action -->
+      <div class="primary-action-wrap">
+        <button class="diagnose-btn" id="diagnoseCropBtn" aria-label="Diagnose crop">
+          <span class="diagnose-icon" aria-hidden="true">🔬</span>
+          <div>
+            <span class="diagnose-label" id="diagnoseLabelText" data-i18n="farmer.diagnose">Diagnose Crop</span>
+            <span class="diagnose-sub">Take a photo · Get AI analysis</span>
+          </div>
+          <svg class="diagnose-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M5 12h14M12 5l7 7-7 7"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Secondary Actions Grid -->
+      <div class="action-grid">
+        <button class="action-tile" id="reportDiseaseBtn" aria-label="Report disease">
+          <span class="tile-icon" aria-hidden="true">📍</span>
+          <span class="tile-label" id="reportLabelText" data-i18n="farmer.report">Report Disease</span>
+        </button>
+        <button class="action-tile" id="nearbyAlertsBtn" aria-label="Nearby alerts">
+          <span class="tile-icon" aria-hidden="true">🔔</span>
+          <span class="tile-label" id="nearbyLabelText" data-i18n="farmer.nearby">Nearby Alerts</span>
+        </button>
+        <button class="action-tile" id="myReportsBtn" aria-label="My reports">
+          <span class="tile-icon" aria-hidden="true">📋</span>
+          <span class="tile-label" id="myReportsLabelText" data-i18n="farmer.myReports">My Reports</span>
+        </button>
+        <a class="action-tile" href="/" aria-label="Public home page">
+          <span class="tile-icon" aria-hidden="true">🌾</span>
+          <span class="tile-label">KrishiRakshak</span>
+        </a>
+      </div>
+    </div>
+
+    <!-- Bottom nav -->
+    <nav class="bottom-nav" aria-label="Farmer navigation">
+      <button class="bnav-item active" data-screen="home" aria-current="page">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        <span id="bnav-home">Home</span>
+      </button>
+      <button class="bnav-item" data-screen="diagnose" id="bnav-diagnose-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <span id="bnav-diagnose">Diagnose</span>
+      </button>
+      <button class="bnav-item" data-screen="nearby">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        <span id="bnav-nearby">Nearby</span>
+      </button>
+      <button class="bnav-item" data-screen="reports">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+        <span id="bnav-reports">Reports</span>
+      </button>
+    </nav>
+  </div>
+</div>
+
+<!-- ── SCREEN: Diagnose Crop ──────────────────────────────────── -->
+<div id="screenDiagnose" class="screen" role="main" aria-label="Crop diagnosis">
+  <div class="farmer-app">
+    <header class="app-header app-header--sub">
+      <button class="back-btn back-btn--flat" id="diagnoseBackBtn" aria-label="Back">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 4L6 10l6 6"/></svg>
+      </button>
+      <h1 class="screen-title" id="diagnoseTitleText">Diagnose Crop</h1>
+    </header>
+    <div class="diagnose-body">
+      <!-- AI Disclaimer -->
+      <div class="disclaimer-banner" role="note">
+        <span aria-hidden="true">⚠️</span>
+        <span id="diagDisclaimerText" data-i18n="farmer.diagnoseFlow.disclaimer">Initial AI classification. Consult your local agricultural officer for severe cases.</span>
+      </div>
+
+      <!-- Crop selection -->
+      <div class="section-label" id="chooseCropText" data-i18n="farmer.diagnoseFlow.chooseCrop">Choose your crop (optional)</div>
+      <div class="crop-pills" id="cropPills" role="group" aria-label="Crop selection">
+        <button type="button" class="crop-pill active" data-crop="" aria-pressed="true">🌿 <span data-i18n="farmer.diagnoseFlow.autoDetect">Auto-Detect</span></button>
+        <button type="button" class="crop-pill" data-crop="Tomato" aria-pressed="false">🍅 Tomato</button>
+        <button type="button" class="crop-pill" data-crop="Potato" aria-pressed="false">🥔 Potato</button>
+        <button type="button" class="crop-pill" data-crop="Apple" aria-pressed="false">🍎 Apple</button>
+        <button type="button" class="crop-pill" data-crop="Grape" aria-pressed="false">🍇 Grape</button>
+        <button type="button" class="crop-pill" data-crop="Corn (maize)" aria-pressed="false">🌽 Corn</button>
+        <button type="button" class="crop-pill" data-crop="Pepper, bell" aria-pressed="false">🌶️ Pepper</button>
+        <button type="button" class="crop-pill" data-crop="Peach" aria-pressed="false">🍑 Peach</button>
+      </div>
+
+      <!-- Photo upload -->
+      <div class="section-label" id="addPhotoText" data-i18n="farmer.diagnoseFlow.addPhoto">Add a clear leaf photo</div>
+      <div class="photo-zone" id="photoZone" role="button" tabindex="0" aria-label="Choose leaf photo">
+        <input type="file" id="leafFile" accept="image/*" hidden>
+        <div class="photo-zone-inner" id="photoZoneInner">
+          <span class="photo-zone-icon" aria-hidden="true">📷</span>
+          <strong>Choose a leaf photo</strong>
+          <small>JPG, PNG, WebP · up to 5 MB</small>
+        </div>
+        <img id="photoPreview" class="photo-preview" alt="Leaf preview" hidden>
+      </div>
+
+      <!-- Camera button -->
+      <button class="secondary-btn" id="takePhotoBtn" aria-label="Take a photo with camera">
+        <span id="takePhotoBtnText" data-i18n="farmer.diagnoseFlow.takePhoto">Take a photo</span>
+      </button>
+      <input type="file" id="cameraFile" accept="image/*" capture="environment" hidden>
+
+      <!-- Run analysis button -->
+      <button class="primary-btn" id="runAnalysisBtn" disabled aria-label="Run AI analysis">
+        <span id="runAnalysisBtnText" data-i18n="farmer.diagnoseFlow.runBtn">Analyze Crop</span>
+      </button>
+
+      <!-- Result section (hidden until result) -->
+      <div id="diagResultSection" hidden>
+        <div class="result-card">
+          <div class="result-header-row">
+            <span id="resultCropBadge" class="result-crop-badge"></span>
+            <span id="resultConfBadge" class="result-conf-badge"></span>
+          </div>
+          <h2 id="resultDiseaseName" class="result-disease"></h2>
+          <p id="resultTreatment" class="result-treatment"></p>
+          <div id="resultTop3" class="result-alts" hidden></div>
+        </div>
+
+        <!-- Report prompt -->
+        <div class="report-prompt-card">
+          <p id="reportPromptText" data-i18n="farmer.diagnoseFlow.reportPrompt">Report this in your area?</p>
+          <p id="reportSubText" class="report-sub" data-i18n="farmer.diagnoseFlow.reportSub">Helps track nearby disease activity.</p>
+          <button id="submitReportBtn" class="accent-btn" aria-label="Share location and report">
+            <span id="submitReportBtnText" data-i18n="farmer.diagnoseFlow.reportBtn">Share location & report</span>
+          </button>
+          <div id="reportDone" class="report-done-msg" hidden>
+            <span aria-hidden="true">✅</span>
+            <span data-i18n="farmer.diagnoseFlow.reportDone">Report submitted.</span>
+          </div>
+        </div>
+      </div>
+
+      <p id="diagnoseError" class="field-error" role="alert" aria-live="polite" hidden></p>
+    </div>
+
+    <!-- Bottom nav -->
+    <nav class="bottom-nav" aria-label="Farmer navigation">
+      <button class="bnav-item" data-screen="home">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        <span>Home</span>
+      </button>
+      <button class="bnav-item active" data-screen="diagnose" aria-current="page">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <span>Diagnose</span>
+      </button>
+      <button class="bnav-item" data-screen="nearby">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        <span>Nearby</span>
+      </button>
+      <button class="bnav-item" data-screen="reports">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        <span>Reports</span>
+      </button>
+    </nav>
+  </div>
+</div>
+
+<!-- ── SCREEN: Nearby Alerts ──────────────────────────────────── -->
+<div id="screenNearby" class="screen" role="main" aria-label="Nearby disease alerts">
+  <div class="farmer-app">
+    <header class="app-header app-header--sub">
+      <button class="back-btn back-btn--flat" id="nearbyBackBtn" aria-label="Back">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 4L6 10l6 6"/></svg>
+      </button>
+      <h1 class="screen-title" id="nearbyTitleText" data-i18n="farmer.nearbyAlerts.title">Nearby Alerts</h1>
+    </header>
+    <div class="list-body">
+      <p id="nearbyStatus" class="list-status" role="status" aria-live="polite" data-i18n="farmer.nearbyAlerts.loading">Checking nearby reports…</p>
+      <div id="nearbyList" class="report-list"></div>
+    </div>
+    <nav class="bottom-nav">
+      <button class="bnav-item" data-screen="home">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        <span>Home</span>
+      </button>
+      <button class="bnav-item" data-screen="diagnose">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <span>Diagnose</span>
+      </button>
+      <button class="bnav-item active" data-screen="nearby" aria-current="page">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        <span>Nearby</span>
+      </button>
+      <button class="bnav-item" data-screen="reports">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/></svg>
+        <span>Reports</span>
+      </button>
+    </nav>
+  </div>
+</div>
+
+<!-- ── SCREEN: My Reports ─────────────────────────────────────── -->
+<div id="screenReports" class="screen" role="main" aria-label="My disease reports">
+  <div class="farmer-app">
+    <header class="app-header app-header--sub">
+      <button class="back-btn back-btn--flat" id="reportsBackBtn" aria-label="Back">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 4L6 10l6 6"/></svg>
+      </button>
+      <h1 class="screen-title" id="reportsTitleText" data-i18n="farmer.myReports.title">My Reports</h1>
+    </header>
+    <div class="list-body">
+      <p id="reportsStatus" class="list-status" role="status" aria-live="polite" data-i18n="common.loading">Loading…</p>
+      <div id="myReportsList" class="report-list"></div>
+    </div>
+    <nav class="bottom-nav">
+      <button class="bnav-item" data-screen="home">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        <span>Home</span>
+      </button>
+      <button class="bnav-item" data-screen="diagnose">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <span>Diagnose</span>
+      </button>
+      <button class="bnav-item" data-screen="nearby">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        <span>Nearby</span>
+      </button>
+      <button class="bnav-item active" data-screen="reports" aria-current="page">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/></svg>
+        <span>Reports</span>
+      </button>
+    </nav>
+  </div>
+</div>
+
+<script type="module" src="farmer.js"></script>
+</body>
+</html>
