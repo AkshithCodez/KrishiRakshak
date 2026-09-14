@@ -1,0 +1,27 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Landing verification</title><style>body{overflow:hidden;margin:0;background:#172019;color:white;font:12px Arial}nav{overflow-x:auto;overflow-y:hidden;white-space:nowrap;height:44px;display:flex;gap:5px;align-items:center;padding:0 5px}button{flex-shrink:0;background:#aec29a;border:0;padding:7px;cursor:pointer}iframe{border:0;width:100%;height:calc(100vh - 44px);display:block}pre{display:none;position:fixed;right:8px;bottom:8px;background:#000d;color:#cef1aa;max-width:430px;font-size:10px;pointer-events:none}</style></head><body><nav id="controls"></nav><iframe title="Public landing preview"></iframe><pre id="readout"></pre><script>
+const f=document.querySelector('iframe'),nav=document.querySelector('nav');
+for(const p of [0,.08,.16,.25,.30,.415,.55,.65,.745,.81,.855,.90,.97,1]){const b=document.createElement('button');b.textContent=p;b.onclick=()=>f.contentWindow.qaSeek(p);nav.append(b);}
+for(const mode of ['normal','reduced','failure','context-loss','invariants','snapshot']){const b=document.createElement('button');b.textContent=mode;b.onclick=()=>mode==='snapshot'?f.contentWindow.qaSnapshot():mode==='invariants'?f.contentWindow.qaTest():mode==='context-loss'?f.contentWindow.qaLose():load(mode);nav.append(b);}
+window.addEventListener('message',e=>{if(e.source===f.contentWindow)document.querySelector('pre').textContent=JSON.stringify(e.data,null,1)});
+async function load(mode='normal'){
+let html=await (await fetch('/index.html?review=4',{cache:'no-store'})).text();
+const setup=`<base href="/"><script>window.qaMode=${JSON.stringify(mode)};if(window.qaMode==='failure'){const realFetch=window.fetch;window.fetch=(url,...args)=>String(url.url||url).includes('TomatoPlant_Final.glb')?Promise.resolve(new Response('Unavailable',{status:503})):realFetch(url,...args)}if(window.qaMode==='reduced'){const realMatch=window.matchMedia;window.matchMedia=q=>q==='(prefers-reduced-motion: reduce)'?{matches:true,addEventListener(){},removeEventListener(){}}:realMatch(q)}<\/script>`;
+html=html.replace('<head>','<head>'+setup);
+if(mode==='reduced'){const css=await(await fetch('/landing.css?v=scroll-3',{cache:'no-store'})).text();html=html.replace('<link rel="stylesheet" href="landing.css?v=scroll-3">','<style>'+css.replaceAll('@media(prefers-reduced-motion:reduce)','@media all').replaceAll('(prefers-reduced-motion:no-preference)','(min-width:99999px)')+'</style>');}
+const tests=`<script type="module">import {scene} from '/landing.js';
+window.qaSeek=p=>{const w=document.querySelector('.story-world');window.scrollTo({top:w.offsetTop+p*(w.offsetHeight-innerHeight),behavior:'instant'});requestAnimationFrame(()=>requestAnimationFrame(()=>setTimeout(snapshot,100)))};
+function snapshot(){const c=document.querySelector('#hero3dContainer');parent.postMessage({size:[innerWidth,innerHeight],scroll:scrollY,stage:c.dataset.stage,status:c.dataset.modelStatus,growth:scene?.growth?.scale.toArray(),camera:scene?.camera?.position.toArray(),look:scene?.look?.toArray(),visible:scene?.visible,frame:scene?.frame,soil:scene?.soil?.matrixWorld.elements,token:getComputedStyle(document.querySelector('.diagnosis-token')).opacity,renderInfo:scene?.renderer?.info.render,opacity:getComputedStyle(document.querySelector('canvas')).opacity,canvasBox:document.querySelector('canvas').getBoundingClientRect().toJSON(),projection:scene?.center?.clone().project(scene.camera).toArray(),modelVisible:scene?.root?.visible,overflow:document.documentElement.scrollWidth>innerWidth},'*')}
+window.qaSnapshot=snapshot;
+window.qaLose=()=>{scene.renderer.getContext().getExtension('WEBGL_lose_context').loseContext();setTimeout(snapshot,100)};
+window.qaTest=async()=>{const results=[];const soil=scene.soil.matrixWorld.clone(),base=scene.stemBase.clone();for(const p of [0,.08,.12,.18,.25,.34,.415,.55,.65,.745,.83,.90,1,.55,.18,0]){scene.setProgress(p);await new Promise(r=>setTimeout(r,70));scene.scene.updateMatrixWorld(true);results.push({p,rootDrift:scene.plant.getWorldPosition(base.clone()).distanceTo(base),soilFixed:soil.equals(scene.soil.matrixWorld),growth:scene.growth.scale.y,finite:scene.camera.position.toArray().every(Number.isFinite),aboveTarget:scene.camera.position.y>scene.look.y})}parent.postMessage({invariants:results},'*')};
+setTimeout(snapshot,1500);<\/script>`;
+f.srcdoc=html.replace('</body>',tests+'</body>');}
+load();</script></body></html>
+
+
+
+
+
+
+
+

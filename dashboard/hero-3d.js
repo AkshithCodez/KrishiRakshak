@@ -1,342 +1,465 @@
+/**
+ * KrishiRakshak — Hero 3D Experience
+ *
+ * Architecture:
+ *   - One persistent Three.js scene; no OrbitControls; no user interaction.
+ *   - Normalized scroll progress (0–1) drives everything: growth, camera, markers.
+ *   - Plant grows root-anchored from soil (scale from stem base, Y up only first).
+ *   - Soil is always stationary — never attached to growth group.
+ *   - Camera travels through 5 deliberate states interpolated by smoothstep.
+ *   - Region markers and hotspot halo appear in the final quarter.
+ *   - Idle sway is restrained (leaf barely moves in breeze) — only during life stage.
+ *   - Performance: on-demand rendering, IntersectionObserver pause, DPR cap.
+ */
+
 import * as THREE from 'three';
 import { GLTFLoader } from './vendor/three/GLTFLoader.js';
 
-/**
- * KrishiRakshak — 3D Hero Experience
- *
- * Stage flow: soil → growth → life → focus → capture → analysis → diagnosis → report → hotspot
- *
- * Growth mechanic:
- *   - At 'soil' stage: plant scale.y = 0.02 (invisible at base), soil stationary
- *   - At 'growth' stage: animated scale.y ramps from 0.02 to 1.0 over time
- *   - At 'life'+: plant at full scale with natural idle sway
- *
- * Camera: fixed upper-front states. No OrbitControls. No continuous spinning.
- * Soil: completely stationary, no animation.
- * DiseasedLeaf underside: camera stays on upper-front angle to avoid geometry imperfection.
- */
+// ── Math helpers ──────────────────────────────────────────────────────────────
+const clamp  = n => Math.max(0, Math.min(1, n));
+const lerp   = (a, b, t) => a + (b - a) * t;
+// smoothstep — maps range [a,b] to eased [0,1]
+const smooth = (a, b, n) => { const t = clamp((n - a) / (b - a)); return t * t * (3 - 2 * t); };
+// ease-out cubic
+const easeOut = t => 1 - Math.pow(1 - clamp(t), 3);
+
 export class Hero3DExperience {
-  constructor(container) {
-    this.container = container;
-    this.canvas = document.getElementById('hero3dCanvas');
-    this.motion = matchMedia('(prefers-reduced-motion: reduce)');
-    this.mobile = matchMedia('(max-width: 760px)');
-    this.stage = 'soil';
-    this.visible = true;
-    this.frame = 0;
-    this.lastFrame = 0;
-    this.render = this.render.bind(this);
-    this.look = new THREE.Vector3();
-    this.fromLook = new THREE.Vector3();
-    this.targetLook = new THREE.Vector3();
-    this.fromPosition = new THREE.Vector3();
-    this.targetPosition = new THREE.Vector3();
-    this.projected = new THREE.Vector3();
-    this.focusOverlay = document.getElementById('viewfinderReticle');
-    this.transitionAt = 0;
-    // Growth state
-    this.growthProgress = 0;  // 0 = soil only, 1 = fully grown
-    this.growthTarget = 0;
-    this.growthStart = 0;
-    this.growthDuration = 2200; // ms — time to grow from soil to full
+  constructor(container, { onError = () => {} } = {}) {
+    this.container  = container;
+    this.canvas     = container.querySelector('canvas');
+    this.onError    = onError;
+    this.motion     = matchMedia('(prefers-reduced-motion: reduce)');
+    this.mobile     = matchMedia('(max-width: 760px)');
+    this.progress   = 0;
+    this.visible    = true;
+    this.frame      = 0;
+    this.lastFrame  = 0;
+    this.wakeUntil  = 0;
+    this.look       = new THREE.Vector3();
+    this.reportPos  = new THREE.Vector3();
+    this.render     = this.render.bind(this);
   }
 
   async init() {
+    // ── Renderer ─────────────────────────────────────────────────────────────
     this.renderer = new THREE.WebGLRenderer({
       canvas: this.canvas,
       alpha: true,
+      preserveDrawingBuffer: true,
       antialias: !this.mobile.matches,
       powerPreference: 'low-power',
     });
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
-    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.05;
-    this.scene = new THREE.Scene();
-    this.camera = new THREE.PerspectiveCamera(38, 1, 0.01, 40);
+    this.renderer.toneMapping      = THREE.ACESFilmicToneMapping;
+    this.renderer.toneMappingExposure = 0.95;
 
-    // Lighting — warm natural outdoor setup
-    this.scene.add(new THREE.HemisphereLight(0xf1f3df, 0x4a3b29, 2));
-    const key = new THREE.DirectionalLight(0xffefcf, 3.1);
-    key.position.set(-2, 4, 4);
+    // ── Scene + Camera ────────────────────────────────────────────────────────
+    this.scene  = new THREE.Scene();
+    this.camera = new THREE.PerspectiveCamera(36, 1, 0.01, 60);
+
+    // ── Lighting — warm outdoor, no expensive shadows ─────────────────────────
+    this.scene.add(new THREE.HemisphereLight(0xf0f2e4, 0x4a3b29, 1.9));
+    const key  = new THREE.DirectionalLight(0xfff0d8, 2.9);
+    key.position.set(-2.2, 4.5, 3.8);
     this.scene.add(key);
-    const fill = new THREE.DirectionalLight(0xc5d0ad, 1.4);
-    fill.position.set(3, 2, -1);
+    const fill = new THREE.DirectionalLight(0xc2d0a8, 1.3);
+    fill.position.set(3.2, 1.8, -1.2);
     this.scene.add(fill);
 
-    // Load GLB — retains original embedded textures and materials
+    // Context loss → graceful fallback
+    this.onContextLost = e => { e.preventDefault(); this.onError(new Error('WebGL context lost')); };
+    this.canvas.addEventListener('webglcontextlost', this.onContextLost);
+
+    // ── Load GLB ─────────────────────────────────────────────────────────────
     const gltf = await new GLTFLoader().loadAsync('/models/TomatoPlant_Final.glb');
-    this.root = gltf.scene;
-    this.soil = this.root.getObjectByName('Soil');
+    this.root  = gltf.scene;
+
+    // Discover named nodes — inspect first in case names differ slightly
+    this.soil  = this.root.getObjectByName('Soil');
     this.plant = this.root.getObjectByName('TomatoPlant');
-    this.leaf = this.root.getObjectByName('DiseasedLeaf');
+    this.leaf  = this.root.getObjectByName('DiseasedLeaf');
 
     if (!this.soil || !this.plant || !this.leaf) {
-      this.dispose();
-      throw new Error('Expected plant hierarchy incomplete: Soil, TomatoPlant, DiseasedLeaf');
+      // Fallback: try to find by type if names mismatch
+      const meshes = [];
+      this.root.traverse(o => { if (o.isMesh) meshes.push(o); });
+      console.warn('[hero-3d] Expected Soil, TomatoPlant, DiseasedLeaf. Found:', meshes.map(m => m.name));
+      throw new Error('GLB missing expected nodes: Soil, TomatoPlant, DiseasedLeaf');
     }
 
     this.scene.add(this.root);
     this.root.updateMatrixWorld(true);
 
-    // Compute bounds from the full scene (at full scale, for camera math)
-    const bounds = new THREE.Box3().setFromObject(this.root);
-    this.center = bounds.getCenter(new THREE.Vector3());
-    this.size = bounds.getSize(new THREE.Vector3());
-    this.soilCenter = new THREE.Box3().setFromObject(this.soil).getCenter(new THREE.Vector3());
-    this.leafCenter = new THREE.Box3().setFromObject(this.leaf).getCenter(new THREE.Vector3());
-    this.leafSize = new THREE.Box3().setFromObject(this.leaf).getSize(new THREE.Vector3());
+    // ── Compute geometry bounds ───────────────────────────────────────────────
+    const rootBounds = new THREE.Box3().setFromObject(this.root);
+    this.center      = rootBounds.getCenter(new THREE.Vector3());
+    this.size        = rootBounds.getSize(new THREE.Vector3());
 
-    /**
-     * Growth pivot group — anchored at the SOIL TOP / STEM BASE.
-     * We move plant and leaf into this group, positioned at soil-top level,
-     * then scale the group vertically. The base stays planted in the soil.
-     */
-    this.growth = new THREE.Group();
-    // Anchor position: stem base = bottom of the plant mesh world position
-    const plantBounds = new THREE.Box3().setFromObject(this.plant);
-    const stemBase = new THREE.Vector3(plantBounds.min.x, plantBounds.min.y, plantBounds.min.z);
-    // Center of soil top is our anchor
     const soilBounds = new THREE.Box3().setFromObject(this.soil);
-    const soilTopY = soilBounds.max.y;
-    // Position growth group at soil surface
-    this.growth.position.set(stemBase.x, soilTopY, stemBase.z);
-    this.root.add(this.growth);
+    this.soilCenter  = soilBounds.getCenter(new THREE.Vector3());
+    this.soilTopY    = soilBounds.max.y;
 
-    // Re-attach plant and leaf to growth group, adjusting local position
-    const plantWorldPos = new THREE.Vector3();
-    this.plant.getWorldPosition(plantWorldPos);
-    this.root.remove(this.plant);
-    this.growth.add(this.plant);
-    this.plant.position.set(
-      plantWorldPos.x - this.growth.position.x,
-      plantWorldPos.y - this.growth.position.y,
-      plantWorldPos.z - this.growth.position.z,
+    const leafBounds = new THREE.Box3().setFromObject(this.leaf);
+    this.leafCenter  = leafBounds.getCenter(new THREE.Vector3());
+    this.leafSize    = leafBounds.getSize(new THREE.Vector3());
+
+    const plantBounds = new THREE.Box3().setFromObject(this.plant);
+    this.plantBase    = new THREE.Vector3(
+      (plantBounds.min.x + plantBounds.max.x) / 2,
+      plantBounds.min.y,     // bottom of the plant mesh = stem root
+      (plantBounds.min.z + plantBounds.max.z) / 2,
     );
 
-    const leafWorldPos = new THREE.Vector3();
-    this.leaf.getWorldPosition(leafWorldPos);
-    this.root.remove(this.leaf);
-    this.growth.add(this.leaf);
-    this.leaf.position.set(
-      leafWorldPos.x - this.growth.position.x,
-      leafWorldPos.y - this.growth.position.y,
-      leafWorldPos.z - this.growth.position.z,
-    );
+    // ── Growth group — root-anchored at the stem base ─────────────────────────
+    // The group sits at stemBase world position.
+    // Group.attach() preserves world transform so plant/leaf keep their position
+    // relative to the scene, but the group's LOCAL scale pivot is at stemBase.
+    //
+    // Result: scaling growth group scales plant UP from the stem base, not from
+    // model center. Soil is never in this group — it stays fixed.
+    this.stemBase = this.plant.getWorldPosition(new THREE.Vector3());
+    // Use the computed plantBase Y (bottom of plant) as the actual anchor
+    this.stemBase.y = this.plantBase.y;
 
-    this.leafRest = this.leaf.rotation.clone();
+    this.growth = new THREE.Group();
+    this.growth.position.copy(this.stemBase);
+    this.scene.add(this.growth);
+    this.growth.updateMatrixWorld(true);
+    // Reparent plant and leaf INTO growth group, preserving their world positions
+    this.growth.attach(this.plant);
+    this.growth.attach(this.leaf);
 
-    // Recompute leaf center after reparenting (in growth-group local space)
-    this.leafWorldCenter = () => {
-      const pos = new THREE.Vector3();
-      this.leaf.getWorldPosition(pos);
-      return pos;
-    };
+    // Store leaf rest rotation for idle animation reference
+    this.leafRestRot = this.leaf.rotation.clone();
 
-    // Start with plant nearly invisible (just peeking above soil)
-    this.growth.scale.set(1, 0.02, 1);
-    this.growthProgress = 0;
+    // Store soil rest — soil stays in root, never moves
+    // (no-op, just explicit documentation)
 
-    this.enterAt = performance.now();
+    // ── Start with plant essentially invisible (scale at stem base) ───────────
+    // Y is 0.005 (barely a sliver), X/Z 0.05 (tight stub so it reads as a shoot)
+    this.growth.scale.set(0.05, 0.005, 0.05);
+
+    // ── Region visualization (illustrative field map) ─────────────────────────
+    this.buildRegion();
+
+    // ── Camera setup ─────────────────────────────────────────────────────────
     this.resize();
-    this.setStage('soil', true);
 
+    // ── Lifecycle observers ───────────────────────────────────────────────────
     this.resizeObserver = new ResizeObserver(() => this.resize());
     this.resizeObserver.observe(this.container);
 
     this.observer = new IntersectionObserver(entries => {
       this.visible = entries[0].isIntersecting;
-      this.schedule();
-    }, { threshold: 0 });
+      if (!this.visible) { cancelAnimationFrame(this.frame); this.frame = 0; }
+      else { this.wakeUntil = performance.now() + 600; this.schedule(); }
+    });
     this.observer.observe(this.container);
 
-    this.onVisibility = () => this.schedule();
+    this.onVisibility = () => {
+      if (document.hidden) { cancelAnimationFrame(this.frame); this.frame = 0; }
+      else { this.wakeUntil = performance.now() + 800; this.schedule(); }
+    };
     document.addEventListener('visibilitychange', this.onVisibility);
 
-    this.onMotion = () => {
-      this.growth.rotation.set(0, 0, 0);
-      this.leaf.rotation.copy(this.leafRest);
-      this.setStage(this.stage, true);
+    this.onPageHide = () => { cancelAnimationFrame(this.frame); this.frame = 0; };
+    this.onPageShow = () => {
+      this.wakeUntil = performance.now() + 800;
+      this.onPageHide(); this.resize();
+      requestAnimationFrame(() => this.schedule());
     };
+    window.addEventListener('pagehide', this.onPageHide);
+    window.addEventListener('pageshow', this.onPageShow);
+
+    this.onMotion = () => { this.resize(); this.schedule(); };
     this.motion.addEventListener('change', this.onMotion);
 
-    this.canvas.addEventListener('webglcontextlost', event => {
-      event.preventDefault();
-      this.failed = true;
-      cancelAnimationFrame(this.frame);
-      this.container.dataset.modelStatus = 'fallback';
-      document.getElementById('hero3dFallback').hidden = false;
-      document.getElementById('heroLoaderStatus').textContent =
-        'The plant preview paused. Explore the story or open the Farmer Portal.';
-    });
-
-    // QA metadata
+    // Paint during the canvas reveal transition
+    this.wakeUntil = performance.now() + 1000;
     this.container.dataset.modelStatus = 'loaded';
     this.container.dataset.objects = [this.plant.name, this.leaf.name, this.soil.name].join(',');
     document.getElementById('hero3dFallback').hidden = true;
     this.schedule();
   }
 
-  resize() {
-    if (!this.renderer) return;
-    const w = this.container.clientWidth;
-    const h = this.container.clientHeight;
-    this.renderer.setPixelRatio(Math.min(devicePixelRatio || 1, this.mobile.matches ? 1.25 : 1.5));
-    this.renderer.setSize(w, h, false);
-    this.camera.aspect = w / h;
-    this.camera.updateProjectionMatrix();
-    if (this.root) this.setStage(this.stage, true);
+  // ── Region / hotspot geometry ─────────────────────────────────────────────
+  buildRegion() {
+    // Procedural field map — illustrative cadastral grid, not a real map
+    const paper = document.createElement('canvas');
+    paper.width = 1024; paper.height = 700;
+    const ctx = paper.getContext('2d');
+    ctx.fillStyle = '#111a13'; ctx.fillRect(0, 0, 1024, 700);
+
+    const rows = [0, 220, 455, 700], cols = [0, 182, 412, 622, 824, 1024];
+    for (let r = 0; r < 3; r++) {
+      for (let c = 0; c < 5; c++) {
+        const x = cols[c] + 8, y = rows[r] + 8;
+        const w = cols[c + 1] - cols[c] - 16, h = rows[r + 1] - rows[r] - 16;
+        ctx.fillStyle = (r + c) % 3 === 0 ? '#1f2f22' : '#192419';
+        ctx.fillRect(x, y, w, h);
+        ctx.strokeStyle = '#445840'; ctx.lineWidth = 1; ctx.strokeRect(x, y, w, h);
+        // Row crop lines
+        ctx.save(); ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip();
+        ctx.strokeStyle = 'rgba(110,140,100,.1)'; ctx.lineWidth = 2;
+        for (let s = -h; s < w + h; s += 14) {
+          ctx.beginPath(); ctx.moveTo(x + s, y); ctx.lineTo(x + s + h * 0.38, y + h); ctx.stroke();
+        }
+        ctx.restore();
+      }
+    }
+    // A road / waterway
+    ctx.strokeStyle = 'rgba(181,160,107,.35)'; ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.moveTo(0, 445); ctx.bezierCurveTo(340, 410, 640, 520, 1024, 448); ctx.stroke();
+
+    this.mapTex = new THREE.CanvasTexture(paper);
+    this.mapTex.colorSpace = THREE.SRGBColorSpace;
+    this.mapMat = new THREE.MeshBasicMaterial({ map: this.mapTex, transparent: true, opacity: 0, depthWrite: false });
+    this.map    = new THREE.Mesh(new THREE.PlaneGeometry(6.8, 4.6), this.mapMat);
+    this.map.rotation.x = -Math.PI / 2;
+    this.map.position.set(0, this.soilCenter.y - 0.04, 0);
+    this.scene.add(this.map);
+
+    // Signal dots
+    this.region     = new THREE.Group();
+    this.region.position.y = this.soilCenter.y + 0.09;
+    this.scene.add(this.region);
+
+    this.dotGeo = new THREE.SphereGeometry(0.052, 10, 7);
+    this.dotMat = new THREE.MeshBasicMaterial({ color: 0xc7b75f });
+
+    const positions = [[0,0],[0.5,0.3],[-0.44,0.44],[0.32,-0.52],[-0.46,-0.35],[2.1,-1.35],[-2.1,1.4],[-1.8,-1.2],[2.4,0.9]];
+    this.markers = positions.map(([x, z]) => {
+      const dot = new THREE.Mesh(this.dotGeo, this.dotMat);
+      dot.position.set(x, 0.025, z);
+      dot.scale.setScalar(0);
+      this.region.add(dot);
+      return dot;
+    });
+
+    // Halo ring (hotspot cluster ring)
+    this.haloMat = new THREE.MeshBasicMaterial({ color: 0xc7b75f, transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false });
+    this.halo    = new THREE.Mesh(new THREE.RingGeometry(0.82, 0.835, 64), this.haloMat);
+    this.halo.rotation.x = -Math.PI / 2;
+    this.halo.position.y = 0.012;
+    this.region.add(this.halo);
+
+    // Area fill
+    this.areaMat = new THREE.MeshBasicMaterial({ color: 0xc7b75f, transparent: true, opacity: 0, depthWrite: false });
+    this.area    = new THREE.Mesh(new THREE.CircleGeometry(0.8, 64), this.areaMat);
+    this.area.rotation.x = -Math.PI / 2;
+    this.area.position.y = 0.005;
+    this.region.add(this.area);
+
+    // Report dot (travels from leaf center to map center)
+    this.reportDot   = new THREE.Mesh(this.dotGeo, this.dotMat);
+    this.reportEnd   = new THREE.Vector3(0, this.region.position.y + 0.025, 0);
+    this.reportDot.scale.setScalar(0);
+    this.scene.add(this.reportDot);
   }
 
-  setStage(stage, immediate = false) {
-    if (!this.root) return;
-    const prevStage = this.stage;
-    this.stage = stage;
-    this.fromPosition.copy(this.camera.position);
-    this.fromLook.copy(this.look);
+  // ── Camera key states ─────────────────────────────────────────────────────
+  buildCameraKeys() {
+    const mob    = this.mobile.matches;
+    const center = this.center;
+    const soil   = this.soilCenter;
+    const leaf   = this.leafCenter;
 
-    const fov = THREE.MathUtils.degToRad(this.camera.fov / 2);
-    const distance = Math.max(
-      this.size.y / 2 / Math.tan(fov),
-      this.size.x / 2 / (Math.tan(fov) * this.camera.aspect),
-    ) * 1.18;
+    // Distances tuned for the FOV and scene bounds
+    const distFull = mob ? Math.max(7.8, 2.7 / this.camera.aspect) : 3.7;
+    const distNear = mob ? Math.max(1.9, 0.74 / this.camera.aspect) : 1.1;
+    const distSoil = mob ? 3.1 : 2.0;
 
-    // ── Camera states ──────────────────────────────────────────
-    // STATE A — SOIL / GROWTH: look at soil + lower plant, show ground relationship
-    if (['soil', 'growth'].includes(stage)) {
-      this.targetLook.set(this.center.x, this.soilCenter.y + this.size.y * 0.25, this.center.z);
-      this.targetPosition.set(this.center.x + 0.1, this.soilCenter.y + this.size.y * 0.3, distance * 0.95);
-    }
-    // STATE B — FULL PLANT: balanced full composition
-    else if (stage === 'life') {
-      this.targetLook.copy(this.center);
-      this.targetPosition.set(this.center.x + 0.14, this.center.y + 0.36, distance);
-    }
-    // STATE C — DISEASE FOCUS: upper-front, above leaf center (avoid underside)
-    else if (['focus', 'capture', 'analysis', 'diagnosis'].includes(stage)) {
-      const lc = this.leafWorldCenter ? this.leafWorldCenter() : this.leafCenter;
-      this.targetLook.copy(lc);
-      const close = stage === 'focus' ? 1.14 : stage === 'diagnosis' ? 1.2 : 0.83;
-      // Always stay above the leaf center to avoid geometry imperfection on underside
-      this.targetPosition.copy(lc).add(new THREE.Vector3(0.06, 0.44, close));
-    }
-    // STATE D — REPORT / HOTSPOT: pull back
-    else if (['report', 'hotspot'].includes(stage)) {
-      this.targetLook.set(this.center.x, this.center.y + 0.1, this.center.z);
-      this.targetPosition.set(this.center.x + 0.18, this.center.y + 0.7, distance * 1.08);
-    }
+    // Horizontal offset for left/right composition
+    const rPx = mob ? 0.50 : 0.73;   // x offset in ViewOffset: plant to the right
+    const lPx = mob ? 0.50 : 0.30;   // plant centered-left for full-plant stage
 
-    // Start growth animation when transitioning to 'growth' stage
-    if (stage === 'growth' && prevStage === 'soil') {
-      this.growthTarget = 1;
-      this.growthStart = performance.now();
-    }
-    // When jumping past growth to life+, ensure plant is fully grown
-    if (!['soil', 'growth'].includes(stage) && this.growthProgress < 1) {
-      this.growthTarget = 1;
-      this.growthProgress = 1;
-      this.growth.scale.set(1, 1, 1);
-    }
-    // Jumping back to soil: reset plant
-    if (stage === 'soil') {
-      this.growthTarget = 0;
-      this.growthProgress = 0;
-      this.growth.scale.set(1, 0.02, 1);
-    }
+    // Convenience builder: (progress, lookTarget, cameraDelta, xComposition, yComposition)
+    const mk = (p, look, dx, dy, dz, x, y = 0.50) => ({
+      p,
+      look:     look.clone(),
+      position: look.clone().add(new THREE.Vector3(dx, dy, dz)),
+      x, y,
+    });
 
-    this.transitionAt = performance.now();
-    if (immediate || this.motion.matches) {
-      this.camera.position.copy(this.targetPosition);
-      this.look.copy(this.targetLook);
-      this.transitionAt -= 1200;
+    // Soil look: slightly above soil center to frame emerging stem
+    const soilLook = soil.clone().add(new THREE.Vector3(0, 0.12, 0));
+    const regionLook = soil.clone();
+    const introY = mob ? 0.74 : 0.55;
+
+    this.keys = [
+      // STATE A — SOIL / INTRO (0.00–0.08)
+      mk(0.00, soilLook,  0.08, 0.65, distSoil, rPx, introY),
+      mk(0.08, soilLook,  0.08, 0.65, distSoil, rPx, mob ? 0.32 : 0.55),
+
+      // STATE A→B transition: plant starts growing (0.08–0.25)
+      // Camera slowly lifts and pans to show more of the plant
+      mk(0.22, center,   0.10, 0.42, distFull, lPx, mob ? 0.32 : 0.52),
+
+      // STATE B — FULL PLANT (0.25–0.35)
+      mk(0.25, center,   0.14, 0.40, distFull, lPx, mob ? 0.32 : 0.50),
+      mk(0.34, center,   0.14, 0.40, distFull, lPx, mob ? 0.32 : 0.50),
+
+      // STATE C — DISEASE FOCUS (0.35–0.48)
+      // Upper-front angle — stays above leaf center, never sees the underside
+      mk(0.48, leaf,     0.06, 0.48, distNear * 1.4, rPx, mob ? 0.32 : 0.50),
+
+      // STATE D — CAPTURE / SCAN (0.48–0.70)
+      mk(0.56, leaf,     0.06, 0.46, distNear,       rPx, mob ? 0.32 : 0.50),
+      mk(0.78, leaf,     0.06, 0.46, distNear,       rPx, mob ? 0.32 : 0.50),
+
+      // STATE E — REPORT → REGIONAL (0.78–1.00)
+      // Pull back to reveal the illustrative map
+      mk(0.87, regionLook, 0.28, 3.1, 5.8, rPx, mob ? 0.32 : 0.50),
+      mk(0.96, regionLook, 0.28, mob ? 15 : 9.5, mob ? 22 : 10.5, rPx, mob ? 0.32 : 0.50),
+      mk(1.00, regionLook, 0.28, mob ? 15 : 9.5, mob ? 22 : 10.5, rPx, mob ? 0.32 : 0.50),
+    ];
+
+    // Reduced motion: fixed balanced view of full plant
+    if (this.motion.matches) {
+      const d = Math.max(3.4, 2.6 / this.camera.aspect);
+      this.keys = [mk(0, center, 0.14, 0.4, d, 0.5), mk(1, center, 0.14, 0.4, d, 0.5)];
     }
+  }
+
+  resize() {
+    if (!this.renderer || !this.root) return;
+    this.width  = this.container.clientWidth;
+    this.height = this.container.clientHeight;
+    this.renderer.setPixelRatio(Math.min(devicePixelRatio || 1, this.mobile.matches ? 1.25 : 1.5));
+    this.renderer.setSize(this.width, this.height, false);
+    this.camera.aspect = this.width / Math.max(1, this.height);
+    this.camera.updateProjectionMatrix();
+    this.buildCameraKeys();
+    this.schedule();
+  }
+
+  setProgress(p) {
+    this.progress = clamp(p);
     this.schedule();
   }
 
   schedule() {
-    if (this.failed || !this.root || !this.visible || document.hidden || this.frame) return;
+    if (this.disposed || !this.root || !this.visible || document.hidden || this.frame) return;
     this.frame = requestAnimationFrame(this.render);
   }
 
   render(now) {
     this.frame = 0;
-    if (this.failed || !this.visible || document.hidden) return;
-    // Cap to ~30fps on mobile for battery
-    if (now - this.lastFrame < (this.mobile.matches ? 40 : 20)) { this.schedule(); return; }
+    if (this.disposed || !this.visible || document.hidden) return;
+    // Frame rate cap: ~50fps desktop, ~30fps mobile
+    if (now - this.lastFrame < (this.mobile.matches ? 34 : 20)) { this.schedule(); return; }
     this.lastFrame = now;
 
-    // ── Camera transition ──────────────────────────────────────
-    const progress = Math.min(1, Math.max(0, (now - this.transitionAt) / 1100));
-    const eased = 1 - Math.pow(1 - progress, 3);
-    if (!this.motion.matches && progress < 1) {
-      this.camera.position.lerpVectors(this.fromPosition, this.targetPosition, eased);
-      this.look.lerpVectors(this.fromLook, this.targetLook, eased);
+    const p = this.motion.matches ? 0.30 : this.progress;
+
+    // ── Plant growth ─────────────────────────────────────────────────────────
+    // smooth(.08, .25, p) → 0 before 8%, 1 after 25%
+    const growthT = smooth(0.08, 0.25, p);
+    // Start extremely small at base; grow to full size
+    // X/Z get a slight lag so the plant feels like it's pushing UP first
+    const scaleXZ = easeOut(smooth(0.10, 0.26, p));
+    const scaleY  = easeOut(growthT);
+    this.growth.scale.set(
+      0.02 + 0.98 * scaleXZ,
+      0.005 + 0.995 * scaleY,
+      0.02 + 0.98 * scaleXZ,
+    );
+
+    // ── Idle sway — only during the 'life' hold (p ≈ 0.25–0.35) ─────────────
+    const swayAmt = smooth(0.27, 0.32, p) * (1 - smooth(0.33, 0.38, p));
+    if (!this.motion.matches && swayAmt > 0) {
+      // Very gentle breeze — max 0.003 radians
+      this.growth.rotation.z = Math.sin(now * 0.00058) * 0.003 * swayAmt;
+      this.leaf.rotation.z   = this.leafRestRot.z + Math.sin(now * 0.00082) * 0.0015 * swayAmt;
     } else {
-      this.camera.position.copy(this.targetPosition);
-      this.look.copy(this.targetLook);
+      this.growth.rotation.z = 0;
+      if (this.leaf) this.leaf.rotation.z = this.leafRestRot?.z ?? 0;
     }
+
+    // ── Camera interpolation ──────────────────────────────────────────────────
+    let next = 1;
+    while (next < this.keys.length - 1 && p > this.keys[next].p) next++;
+    const a = this.keys[next - 1];
+    const b = this.keys[next];
+    const t = smooth(a.p, b.p, p);
+
+    this.camera.position.lerpVectors(a.position, b.position, t);
+    this.look.lerpVectors(a.look, b.look, t);
     this.camera.lookAt(this.look);
 
-    // ── Growth animation (soil → growth stage) ─────────────────
-    if (!this.motion.matches && this.growthProgress < this.growthTarget) {
-      const elapsed = Math.max(0, now - this.growthStart);
-      const t = Math.min(1, elapsed / this.growthDuration);
-      // Ease out cubic — starts fast, settles gently
-      const easeOut = 1 - Math.pow(1 - t, 3);
-      this.growthProgress = easeOut;
-      // Scale Y from 0.02 to 1.0 — X/Z stay 1 so base stays anchored
-      const scaleY = 0.02 + 0.98 * easeOut;
-      this.growth.scale.set(1, scaleY, 1);
+    // ── Horizontal composition offset ─────────────────────────────────────────
+    // Plant sits on right side of frame during soil/growth; centers for full plant;
+    // shifts back right for leaf focus.
+    const xBase   = this.motion.matches || this.mobile.matches ? 0.50 : 0.73;
+    const xShift  = -0.43 * smooth(0.05, 0.14, p) + 0.43 * smooth(0.34, 0.44, p);
+    const x       = xBase + (this.mobile.matches ? 0 : xShift);
+    const y       = lerp(a.y, b.y, t);
+    this.camera.setViewOffset(this.width, this.height, (0.5 - x) * this.width, (0.5 - y) * this.height, this.width, this.height);
+    this.camera.updateProjectionMatrix();
+
+    // ── Region / map ──────────────────────────────────────────────────────────
+    const showMap  = p > 0.79 && !this.motion.matches;
+    this.map.visible    = showMap;
+    this.region.visible = p > 0.845 && !this.motion.matches;
+    this.mapMat.opacity = smooth(0.79, 0.87, p);
+
+    // Report dot: travels from leaf toward map center
+    const showReport = p > 0.815 && p < 0.88 && !this.motion.matches;
+    this.reportDot.visible = showReport;
+    if (showReport) {
+      this.reportPos.lerpVectors(this.leafCenter, this.reportEnd, smooth(0.815, 0.865, p));
+      this.reportDot.position.copy(this.reportPos);
+      this.reportDot.scale.setScalar(smooth(0.815, 0.84, p));
     }
 
-    // ── Natural idle motion (life+, no rotation, no spin) ─────
-    if (!this.motion.matches && !['soil', 'growth'].includes(this.stage)) {
-      const entrance = Math.min(1, (now - this.enterAt) / 1500);
-      const entranceBob = 0.88 + 0.12 * (1 - Math.pow(1 - entrance, 3));
-      // Ensure Y scale stays at 1 once fully grown
-      const baseScale = this.growthProgress >= 1 ? 1 : this.growth.scale.y;
-      this.growth.scale.setY(Math.max(baseScale, this.growthProgress >= 1 ? 1 : entranceBob));
-      // Very subtle natural sway — NOT continuous rotation
-      this.growth.rotation.z = Math.sin(now * 0.00065) * 0.004;
-      this.leaf.rotation.z = this.leafRest.z + Math.sin(now * 0.0008) * 0.002;
-    } else if (this.motion.matches) {
-      this.growth.rotation.set(0, 0, 0);
-      this.leaf.rotation.copy(this.leafRest);
-    }
+    // Markers appear staggered
+    this.markers.forEach((dot, i) => {
+      const start = i === 0 ? 0.86 : 0.87 + i * 0.007;
+      const end   = i === 0 ? 0.875 : 0.90 + i * 0.007;
+      dot.scale.setScalar(smooth(start, end, p));
+    });
 
+    // Hotspot halo and area fill
+    const regionGrowth = smooth(0.925, 0.99, p);
+    this.halo.scale.setScalar(0.2 + 0.8 * regionGrowth);
+    this.haloMat.opacity = 0.72 * regionGrowth;
+    this.area.scale.setScalar(0.2 + 0.8 * regionGrowth);
+    this.areaMat.opacity = 0.08 * regionGrowth;
+
+    // ── Render ────────────────────────────────────────────────────────────────
     this.renderer.render(this.scene, this.camera);
 
-    // Project leaf center for viewfinder overlay
-    const leafPos = this.leafWorldCenter ? this.leafWorldCenter() : this.leafCenter;
-    this.projected.copy(leafPos).project(this.camera);
-    const reticle = this.focusOverlay;
-    if (reticle) {
-      reticle.style.left = `${(this.projected.x * 0.5 + 0.5) * 100}%`;
-      reticle.style.top = `${(-this.projected.y * 0.5 + 0.5) * 100}%`;
-    }
-
-    // Keep rendering during transitions, growth, or idle stages
-    const needsContinuous = (
-      progress < 1 ||
-      this.growthProgress < this.growthTarget ||
-      (!this.motion.matches && !['soil', 'signal', 'hotspot', 'officer'].includes(this.stage))
-    );
+    // Schedule next frame only when needed (idle during life stage sway, or
+    // during active camera travel / growth). Pauses when static.
+    const needsContinuous =
+      now < this.wakeUntil ||
+      (!this.motion.matches && swayAmt > 0) ||
+      p > 0 && p < 1;
     if (needsContinuous) this.schedule();
   }
 
   dispose() {
-    cancelAnimationFrame(this.frame);
+    this.disposed = true;
+    cancelAnimationFrame(this.frame); this.frame = 0;
     this.observer?.disconnect();
     this.resizeObserver?.disconnect();
     document.removeEventListener('visibilitychange', this.onVisibility);
-    if (this.onMotion) this.motion.removeEventListener('change', this.onMotion);
-    this.root?.traverse(obj => {
-      obj.geometry?.dispose();
-      const materials = Array.isArray(obj.material) ? obj.material : [obj.material];
-      materials.filter(Boolean).forEach(mat => {
-        for (const value of Object.values(mat)) if (value?.isTexture) value.dispose();
-        mat.dispose();
+    window.removeEventListener('pagehide', this.onPageHide);
+    window.removeEventListener('pageshow', this.onPageShow);
+    this.motion.removeEventListener('change', this.onMotion);
+    this.canvas?.removeEventListener('webglcontextlost', this.onContextLost);
+    const geos = new Set(), mats = new Set(), texs = new Set();
+    this.scene?.traverse(obj => {
+      if (obj.geometry) geos.add(obj.geometry);
+      const ms = Array.isArray(obj.material) ? obj.material : [obj.material];
+      ms.filter(Boolean).forEach(m => {
+        mats.add(m);
+        Object.values(m).forEach(v => { if (v?.isTexture) texs.add(v); });
       });
     });
+    geos.forEach(g => g.dispose());
+    mats.forEach(m => m.dispose());
+    texs.forEach(t => t.dispose());
     this.renderer?.dispose();
   }
 }
